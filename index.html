@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>形體參數軸</title>
+<style>
+  :root{
+    --ink:#0F1317;
+    --panel:#161B21;
+    --panel-2:#1B2229;
+    --line:#262E36;
+    --line-hi:#36414B;
+    --text:#D9E1E8;
+    --dim:#77868F;
+    --accent:#E9A13B;
+    --accent-dim:#8A6323;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:var(--sans);
+    font-size:14px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .shell{
+    display:grid;
+    grid-template-columns: minmax(0,1fr) 340px;
+    height:100vh;
+  }
+  @media (max-width: 900px){
+    .shell{grid-template-columns:1fr; height:auto}
+  }
+
+  /* ---------- viewport ---------- */
+  .stage{
+    position:relative;
+    border-right:1px solid var(--line);
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+  }
+  @media (max-width:900px){ .stage{border-right:none;border-bottom:1px solid var(--line)} }
+
+  .stage-head{
+    display:flex;
+    align-items:baseline;
+    gap:14px;
+    padding:16px 20px 10px;
+    border-bottom:1px solid var(--line);
+  }
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--dim);
+  }
+  .stage-title{
+    font-size:15px;
+    font-weight:600;
+    letter-spacing:.01em;
+    margin:0;
+  }
+  .canvas-wrap{
+    position:relative;
+    flex:1;
+    min-height:380px;
+  }
+  @media (max-width:900px){ .canvas-wrap{height:56vw;min-height:320px} }
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab}
+  canvas:active{cursor:grabbing}
+  .hint{
+    position:absolute;
+    left:20px;bottom:14px;
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:#4E5B65;
+    pointer-events:none;
+  }
+
+  /* ---------- readout strip ---------- */
+  .readout{
+    border-top:1px solid var(--line);
+    background:var(--panel);
+    padding:12px 20px 14px;
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(96px,1fr));
+    gap:2px 18px;
+  }
+  .cell{display:flex;flex-direction:column;gap:1px}
+  .cell .k{
+    font-family:var(--mono);
+    font-size:9.5px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--dim);
+  }
+  .cell .v{
+    font-family:var(--mono);
+    font-size:16px;
+    font-variant-numeric:tabular-nums;
+    letter-spacing:-.01em;
+  }
+  .cell .v small{font-size:10px;color:var(--dim);margin-left:2px;letter-spacing:0}
+  .cell.axis-a .v{color:var(--accent)}
+
+  /* ---------- controls ---------- */
+  .panel{
+    background:var(--panel);
+    overflow-y:auto;
+    padding:0 0 28px;
+  }
+  .group{border-bottom:1px solid var(--line);padding:16px 18px 18px}
+  .group > .glabel{
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--dim);
+    margin-bottom:10px;
+  }
+  .note{font-size:11.5px;color:var(--dim);margin-top:8px;line-height:1.45}
+
+  .seg{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:2px;overflow:hidden}
+  .seg button{
+    appearance:none;border:0;background:var(--panel-2);color:var(--dim);
+    font-family:var(--sans);font-size:13px;padding:9px 4px;cursor:pointer;
+    transition:background .12s,color .12s;
+  }
+  .seg button:hover{color:var(--text)}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:#141414;font-weight:600}
+
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chips button{
+    appearance:none;
+    min-width:38px;
+    padding:6px 9px;
+    background:transparent;
+    border:1px solid var(--line-hi);
+    color:var(--dim);
+    border-radius:2px;
+    font-family:var(--mono);
+    font-size:12.5px;
+    cursor:pointer;
+    transition:border-color .12s,color .12s,background .12s;
+  }
+  .chips button:hover{color:var(--text);border-color:var(--dim)}
+  .chips button[aria-pressed="true"]{
+    border-color:var(--accent);color:var(--accent);background:rgba(233,161,59,.09);
+  }
+
+  .slider{margin-top:14px}
+  .slider:first-of-type{margin-top:0}
+  .slider .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+  .slider .name{font-size:13px}
+  .slider .name em{font-style:normal;color:var(--dim);font-size:11px;margin-left:5px}
+  .slider .val{
+    font-family:var(--mono);font-size:13.5px;color:var(--accent);
+    font-variant-numeric:tabular-nums;
+  }
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:18px;background:transparent;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--line-hi);border-radius:0}
+  input[type=range]::-moz-range-track{height:2px;background:var(--line-hi)}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:11px;height:11px;margin-top:-4.5px;
+    background:var(--accent);border-radius:50%;border:0;
+  }
+  input[type=range]::-moz-range-thumb{width:11px;height:11px;background:var(--accent);border-radius:50%;border:0}
+  input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+
+  .dens{display:flex;align-items:center;gap:8px;margin-top:2px}
+  .dens input[type=number]{
+    width:78px;background:var(--panel-2);border:1px solid var(--line-hi);color:var(--text);
+    font-family:var(--mono);font-size:13px;padding:5px 7px;border-radius:2px;
+  }
+  .dens input[type=number]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .dens span{font-size:11.5px;color:var(--dim)}
+
+  .acts{display:flex;flex-wrap:wrap;gap:8px;padding:16px 18px}
+  .acts button{
+    flex:1 1 44%;appearance:none;padding:9px 10px;border-radius:2px;cursor:pointer;
+    font-family:var(--sans);font-size:12.5px;transition:background .12s,border-color .12s,color .12s;
+  }
+  .btn-primary{background:var(--accent);border:1px solid var(--accent);color:#141414;font-weight:600}
+  .btn-primary:hover{background:#F2AE4C}
+  .btn-ghost{background:transparent;border:1px solid var(--line-hi);color:var(--dim)}
+  .btn-ghost:hover{color:var(--text);border-color:var(--dim)}
+  .acts button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ---------- collected list ---------- */
+  .list{padding:0 18px}
+  .list h3{
+    font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--dim);font-weight:400;margin:2px 0 8px;
+  }
+  .empty{font-size:12px;color:#5A6873;border:1px dashed var(--line-hi);padding:14px;border-radius:2px}
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
+  th,td{text-align:right;padding:4px 3px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+  th{color:var(--dim);font-weight:400;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase}
+  td:first-child,th:first-child{text-align:left}
+  tbody tr:hover td{background:var(--panel-2)}
+  .del{appearance:none;background:none;border:0;color:#5A6873;cursor:pointer;font-family:var(--mono);padding:0 2px}
+  .del:hover{color:var(--accent)}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important} }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <section class="stage">
+    <div class="stage-head">
+      <span class="eyebrow">參數化刺激物</span>
+      <h1 class="stage-title">形體參數軸</h1>
+    </div>
+    <div class="canvas-wrap"><canvas id="cv"></canvas><div class="hint">拖曳旋轉</div></div>
+    <div class="readout" id="readout"></div>
+  </section>
+
+  <aside class="panel">
+
+    <div class="group">
+      <div class="glabel">基底</div>
+      <div class="dens">
+        <input type="number" id="cube" value="15" min="3" max="120" step="0.5">
+        <span>mm　立方體邊長</span>
+      </div>
+      <p class="note">所有形體的體積等於此立方體。柱體、n 為 4、比例 1:1:1 時即為基底本身,其餘形體由此延伸。視圖中的橘色線框即基底。</p>
+    </div>
+
+    <div class="group">
+      <div class="glabel">形體族</div>
+      <div class="seg" id="fam" role="group" aria-label="形體族">
+        <button data-v="prism" aria-pressed="true">柱體</button>
+        <button data-v="sphere" aria-pressed="false">球體</button>
+        <button data-v="cone" aria-pressed="false">錐體</button>
+        <button data-v="ring" aria-pressed="false">環體</button>
+      </div>
+      <p class="note" id="famNote">柱體:等截面直柱。截面形狀於下方選擇。</p>
+    </div>
+
+    <div class="group" id="ngroup">
+      <div class="glabel">底面形狀</div>
+      <div class="chips" id="ngon" role="group" aria-label="底面邊數">
+        <button data-v="3" aria-pressed="false">3</button>
+        <button data-v="4" aria-pressed="true">4</button>
+        <button data-v="5" aria-pressed="false">5</button>
+        <button data-v="6" aria-pressed="false">6</button>
+        <button data-v="7" aria-pressed="false">7</button>
+        <button data-v="8" aria-pressed="false">8</button>
+        <button data-v="12" aria-pressed="false">12</button>
+        <button data-v="circle" aria-pressed="false">圓</button>
+      </div>
+      <p class="note">正多邊形邊數。邊數遞增為連續趨近圓形的離散階梯。</p>
+    </div>
+
+    <div class="group" id="hgroup">
+      <div class="glabel">內徑比</div>
+      <div class="slider">
+        <div class="row"><span class="name">內徑 / 外徑</span><span class="val" id="holeV">0.50</span></div>
+        <input type="range" id="hole" min="0.05" max="0.9" step="0.01" value="0.5">
+      </div>
+      <p class="note">內外截面同形同邊數。0 為實心柱,愈大則壁愈薄。體積仍固定為基底立方體。</p>
+    </div>
+
+    <div class="group">
+      <div class="glabel">三軸比例</div>
+      <div class="slider">
+        <div class="row"><span class="name">X <em>截面寬</em></span><span class="val" id="rxV">1.00</span></div>
+        <input type="range" id="rx" min="0.2" max="5" step="0.01" value="1">
+      </div>
+      <div class="slider">
+        <div class="row"><span class="name">Y <em>擠出軸</em></span><span class="val" id="ryV">1.00</span></div>
+        <input type="range" id="ry" min="0.2" max="5" step="0.01" value="1">
+      </div>
+      <div class="slider">
+        <div class="row"><span class="name">Z <em>截面深</em></span><span class="val" id="rzV">1.00</span></div>
+        <input type="range" id="rz" min="0.2" max="5" step="0.01" value="1">
+      </div>
+      <p class="note">無單位,內部正規化為乘積等於 1。移動任一軸只改變比例,實際體積不變。實際毫米長度見下方讀出。</p>
+    </div>
+
+
+    <div class="group">
+      <div class="glabel">材料</div>
+      <div class="chips" id="mat" role="group" aria-label="材料">
+        <button data-v="1.24" data-n="PLA Basic" aria-pressed="false">PLA Basic</button>
+        <button data-v="1.25" data-n="PETG Basic" aria-pressed="true">PETG Basic</button>
+        <button data-v="1.28" data-n="PETG HF" aria-pressed="false">PETG HF</button>
+        <button data-v="1.22" data-n="TPU 95A HF" aria-pressed="false">TPU 95A HF</button>
+      </div>
+      <div class="dens">
+        <input type="number" id="dens" value="1.25" min="0.05" max="12" step="0.01">
+        <span>g/cm³　可直接改為自訂值</span>
+      </div>
+      <p class="note">密度取自 Bambu Lab 技術資料表(ISO 1183)。Bambu Studio 內建 profile 的數值與資料表偶有出入,做質量對照時以實秤為準。</p>
+    </div>
+
+    <div class="acts">
+      <button class="btn-primary" id="add">加入清單</button>
+      <button class="btn-ghost" id="copy">複製 CSV</button>
+      <button class="btn-ghost" id="reset">回到基底</button>
+      <button class="btn-ghost" id="stl">下載 STL</button>
+      <button class="btn-ghost" id="zip">打包下載</button>
+    </div>
+
+    <div class="list">
+      <h3>清單 <span id="count">0</span></h3>
+      <div id="listBody"><div class="empty">尚未加入任何形體。調好參數後按「加入清單」,可累積成一份參數表並複製為 CSV。</div></div>
+    </div>
+
+  </aside>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============ state ============ */
+var S = { fam:"prism", n:4, rx:1, ry:1, rz:1, hole:0.5, cube:15, dens:1.25, mat:"PETG Basic" };
+var rows = [];
+var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ============ geometry ============ */
+// returns {verts:[[x,y,z]..], faces:[[i,..]..]} centred on bbox centre, bbox extents = (S.x,S.y,S.z)
+function build(){
+  var verts=[], faces=[];
+
+  var meta=null;
+  if(S.fam==="sphere"){
+    var LAT=28, LON=56, R=0.5;
+    meta={lat:LAT, lon:LON};
+    for(var i=0;i<=LAT;i++){
+      var th=Math.PI*i/LAT;
+      for(var j=0;j<LON;j++){
+        var ph=2*Math.PI*j/LON;
+        verts.push([R*Math.sin(th)*Math.cos(ph), R*Math.cos(th), R*Math.sin(th)*Math.sin(ph)]);
+      }
+    }
+    for(var i2=0;i2<LAT;i2++){
+      for(var j2=0;j2<LON;j2++){
+        var a=i2*LON+j2, b=i2*LON+(j2+1)%LON, c=(i2+1)*LON+(j2+1)%LON, d=(i2+1)*LON+j2;
+        faces.push([a,d,c,b]);   // wind like the other families: normal into the material
+      }
+    }
+  } else if(S.fam==="ring"){
+    var Nr = (S.n==="circle") ? 72 : parseInt(S.n,10);
+    var q = Math.min(0.95, Math.max(0.02, S.hole));
+    var Rr0 = 0.5, off0 = Math.PI/Nr, ring0=[], kr;
+    for(kr=0;kr<Nr;kr++){
+      var an0 = off0 + 2*Math.PI*kr/Nr;
+      ring0.push([Rr0*Math.cos(an0), Rr0*Math.sin(an0)]);
+    }
+    for(kr=0;kr<Nr;kr++) verts.push([ring0[kr][0],    -0.5, ring0[kr][1]]);
+    for(kr=0;kr<Nr;kr++) verts.push([ring0[kr][0],     0.5, ring0[kr][1]]);
+    for(kr=0;kr<Nr;kr++) verts.push([ring0[kr][0]*q,  -0.5, ring0[kr][1]*q]);
+    for(kr=0;kr<Nr;kr++) verts.push([ring0[kr][0]*q,   0.5, ring0[kr][1]*q]);
+    for(kr=0;kr<Nr;kr++){
+      var kr2=(kr+1)%Nr;
+      faces.push([kr, kr2, Nr+kr2, Nr+kr]);                        // outer wall
+      faces.push([3*Nr+kr, 3*Nr+kr2, 2*Nr+kr2, 2*Nr+kr]);          // inner wall
+      faces.push([Nr+kr, Nr+kr2, 3*Nr+kr2, 3*Nr+kr]);              // top annulus
+      faces.push([kr2, kr, 2*Nr+kr, 2*Nr+kr2]);                    // bottom annulus
+    }
+  } else {
+    var N = (S.n==="circle") ? 72 : parseInt(S.n,10);
+    var Rr = 0.5, off = Math.PI/N;
+    var t = (S.fam==="cone") ? 0 : 1;
+    var ring=[], k;
+    for(k=0;k<N;k++){
+      var an = off + 2*Math.PI*k/N;
+      ring.push([Rr*Math.cos(an), Rr*Math.sin(an)]);
+    }
+    // bottom ring
+    for(k=0;k<N;k++) verts.push([ring[k][0], -0.5, ring[k][1]]);
+    if(t > 0.004){
+      for(k=0;k<N;k++) verts.push([ring[k][0]*t, 0.5, ring[k][1]*t]);
+      var bot=[], top=[];
+      for(k=N-1;k>=0;k--) bot.push(k);
+      for(k=0;k<N;k++) top.push(N+k);
+      faces.push(bot); faces.push(top);
+      for(k=0;k<N;k++){
+        var k2=(k+1)%N;
+        faces.push([k, k2, N+k2, N+k]);
+      }
+    } else {
+      verts.push([0,0.5,0]);
+      var apex=N, bot2=[];
+      for(k=N-1;k>=0;k--) bot2.push(k);
+      faces.push(bot2);
+      for(k=0;k<N;k++) faces.push([k,(k+1)%N,apex]);
+    }
+  }
+
+  // raw bbox of the unit body
+  var i3, lo=[1e9,1e9,1e9], hi=[-1e9,-1e9,-1e9];
+  for(i3=0;i3<verts.length;i3++) for(var d3=0;d3<3;d3++){
+    if(verts[i3][d3]<lo[d3]) lo[d3]=verts[i3][d3];
+    if(verts[i3][d3]>hi[d3]) hi[d3]=verts[i3][d3];
+  }
+  var raw=[hi[0]-lo[0], hi[1]-lo[1], hi[2]-lo[2]];
+  var ctr=[(hi[0]+lo[0])/2,(hi[1]+lo[1])/2,(hi[2]+lo[2])/2];
+
+  // fill ratio is invariant under anisotropic scaling, so it can be read off
+  // the unit body and used to solve for the scale that hits the target volume
+  var rawV = meshVolume({verts:verts, faces:faces});
+  var fill = rawV/Math.max(1e-12, raw[0]*raw[1]*raw[2]);
+
+  // normalise the three ratios so their product is 1: proportion only, no volume change
+  var r=[Math.max(1e-6,S.rx), Math.max(1e-6,S.ry), Math.max(1e-6,S.rz)];
+  var gm=Math.pow(r[0]*r[1]*r[2], 1/3);
+  var nrm=[r[0]/gm, r[1]/gm, r[2]/gm];
+
+  // target mesh volume = cube edge cubed; solve for the bbox scale that hits it
+  var k=Math.pow(Math.max(1e-9, S.cube*S.cube*S.cube/fill), 1/3);
+  var target=[k*nrm[0], k*nrm[1], k*nrm[2]], sc=[1,1,1];
+  for(var d5=0;d5<3;d5++) sc[d5] = (raw[d5] > 1e-9) ? target[d5]/raw[d5] : 1;
+  for(i3=0;i3<verts.length;i3++) for(var d4=0;d4<3;d4++){
+    verts[i3][d4]=(verts[i3][d4]-ctr[d4])*sc[d4];
+  }
+  return {verts:verts, faces:faces, ext:[target[0], target[1], target[2]], meta:meta};
+}
+
+// signed volume of closed mesh via tetra fan, faces may be polygons
+function meshVolume(g){
+  var V=0, f, i, j, a, b, c;
+  for(f=0;f<g.faces.length;f++){
+    var poly=g.faces[f];
+    for(j=1;j<poly.length-1;j++){
+      a=g.verts[poly[0]]; b=g.verts[poly[j]]; c=g.verts[poly[j+1]];
+      V += (a[0]*(b[1]*c[2]-b[2]*c[1]) - a[1]*(b[0]*c[2]-b[2]*c[0]) + a[2]*(b[0]*c[1]-b[1]*c[0]))/6;
+    }
+  }
+  return Math.abs(V);
+}
+
+/* ============ metrics ============ */
+function metrics(g){
+  var sorted = g.ext.slice().sort(function(p,q){return q-p;});
+  var a=sorted[0], b=sorted[1], c=sorted[2];
+  var V = meshVolume(g);                 // mm^3
+  var f = V/(a*b*c);
+  var mass = V/1000 * S.dens;            // cm^3 * g/cm^3
+  return {a:a,b:b,c:c,x:g.ext[0],y:g.ext[1],z:g.ext[2],V:V,f:f,mass:mass,elong:a/b,flat:b/c};
+}
+
+/* ============ renderer ============ */
+var cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+var W=0,H=0,DPR=1;
+var rotX=-0.38, rotY=0.62, dragging=false, lastX=0, lastY=0, spin=0;
+
+function resize(){
+  var r=cv.parentNode.getBoundingClientRect();
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  W=Math.max(1,Math.floor(r.width)); H=Math.max(1,Math.floor(r.height));
+  cv.width=W*DPR; cv.height=H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener("resize",resize);
+
+cv.addEventListener("pointerdown",function(e){dragging=true;lastX=e.clientX;lastY=e.clientY;cv.setPointerCapture(e.pointerId);});
+cv.addEventListener("pointermove",function(e){
+  if(!dragging)return;
+  rotY += (e.clientX-lastX)*0.008;
+  rotX += (e.clientY-lastY)*0.008;
+  rotX = Math.max(-1.45, Math.min(1.45, rotX));
+  lastX=e.clientX; lastY=e.clientY;
+});
+cv.addEventListener("pointerup",function(e){dragging=false;});
+cv.addEventListener("pointercancel",function(){dragging=false;});
+
+function rot(p, rx, ry){
+  var cy=Math.cos(ry), sy=Math.sin(ry);
+  var x=p[0]*cy + p[2]*sy, z=-p[0]*sy + p[2]*cy, y=p[1];
+  var cx=Math.cos(rx), sx=Math.sin(rx);
+  var y2=y*cx - z*sx, z2=y*sx + z*cx;
+  return [x,y2,z2];
+}
+
+var geo=null, met=null;
+
+function project(p, scale){
+  var d=520, z=p[2]+d;
+  var k=(d/Math.max(60,z))*scale;
+  return [W/2 + p[0]*k, H/2 - p[1]*k, p[2]];
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  if(!geo){return;}
+  var ry = rotY + (dragging||reduceMotion ? 0 : spin);
+  var scale = Math.min(W,H)/ (Math.max(geo.ext[0],geo.ext[1],geo.ext[2],S.cube) * 2.5);
+
+  // transform verts
+  var tv=[], i;
+  for(i=0;i<geo.verts.length;i++) tv.push(rot(geo.verts[i], rotX, ry));
+  var pv=[];
+  for(i=0;i<tv.length;i++) pv.push(project(tv[i], scale));
+
+  /* bounding box (signature: drafting dimension frame) */
+  var e=geo.ext, hx=e[0]/2, hy=e[1]/2, hz=e[2]/2;
+  var corners=[], sx,sy,sz;
+  for(sx=-1;sx<=1;sx+=2)for(sy=-1;sy<=1;sy+=2)for(sz=-1;sz<=1;sz+=2)
+    corners.push(project(rot([sx*hx,sy*hy,sz*hz],rotX,ry), scale));
+  function ci(x,y,z){ return ((x>0?1:0)*4)+((y>0?1:0)*2)+((z>0?1:0)); }
+  var boxEdges=[];
+  var signs=[-1,1];
+  for(var ai=0;ai<2;ai++)for(var bi=0;bi<2;bi++){
+    boxEdges.push([ci(-1,signs[ai],signs[bi]), ci(1,signs[ai],signs[bi]), 0]);
+    boxEdges.push([ci(signs[ai],-1,signs[bi]), ci(signs[ai],1,signs[bi]), 1]);
+    boxEdges.push([ci(signs[ai],signs[bi],-1), ci(signs[ai],signs[bi],1), 2]);
+  }
+  /* basis cube: every body is scaled to this cube's volume */
+  var bh=S.cube/2, bcor=[];
+  for(sx=-1;sx<=1;sx+=2)for(sy=-1;sy<=1;sy+=2)for(sz=-1;sz<=1;sz+=2)
+    bcor.push(project(rot([sx*bh,sy*bh,sz*bh],rotX,ry), scale));
+  ctx.save();
+  ctx.lineWidth=1;
+  ctx.strokeStyle="rgba(233,161,59,0.34)";
+  for(i=0;i<boxEdges.length;i++){
+    var Ab=bcor[boxEdges[i][0]], Bb=bcor[boxEdges[i][1]];
+    ctx.beginPath(); ctx.moveTo(Ab[0],Ab[1]); ctx.lineTo(Bb[0],Bb[1]); ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.setLineDash([3,4]);
+  ctx.lineWidth=1;
+  ctx.strokeStyle="rgba(120,138,150,0.32)";
+  for(i=0;i<boxEdges.length;i++){
+    var A=corners[boxEdges[i][0]], B=corners[boxEdges[i][1]];
+    ctx.beginPath(); ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); ctx.stroke();
+  }
+  ctx.restore();
+
+  /* solid: build() winds every face so the Newell normal points into the
+     material, so the outward normal is its negation for all families. Cull
+     back faces, then paint far to near: the ring is not convex, and its far
+     wall is visible through the hole. */
+  var CAMZ = -520;                       // camera sits on -z, +z runs away from viewer
+  var L=[-0.40,0.70,-0.58];
+  var Ln=Math.sqrt(L[0]*L[0]+L[1]*L[1]+L[2]*L[2]);
+  L=[L[0]/Ln,L[1]/Ln,L[2]/Ln];
+  var showEdges = (S.fam!=="sphere") && (S.n!=="circle") && (parseInt(S.n,10)<=12);
+
+  var vis=[];
+  for(var fi=0;fi<geo.faces.length;fi++){
+    var p2=geo.faces[fi], np=p2.length, kk;
+
+    // Newell's method: robust for polygons that degenerate (e.g. sphere poles)
+    var nx=0, ny=0, nz=0, cx=0, cyy=0, cz=0;
+    for(kk=0;kk<np;kk++){
+      var A3=tv[p2[kk]], B3=tv[p2[(kk+1)%np]];
+      nx += (A3[1]-B3[1])*(A3[2]+B3[2]);
+      ny += (A3[2]-B3[2])*(A3[0]+B3[0]);
+      nz += (A3[0]-B3[0])*(A3[1]+B3[1]);
+      cx += A3[0]; cyy += A3[1]; cz += A3[2];
+    }
+    var nl=Math.sqrt(nx*nx+ny*ny+nz*nz);
+    if(nl < 1e-9) continue;
+    nx=-nx/nl; ny=-ny/nl; nz=-nz/nl;
+    cx/=np; cyy/=np; cz/=np;
+
+    // perspective back-face cull: is the camera on the outward side?
+    if(nx*(0-cx) + ny*(0-cyy) + nz*(CAMZ-cz) <= 0) continue;
+
+    var lam=Math.max(0, nx*L[0]+ny*L[1]+nz*L[2]);
+    vis.push({p:p2, d:cz, lum:0.24+0.76*Math.pow(lam,0.8)});
+  }
+  vis.sort(function(a,b){return b.d-a.d;});
+
+  for(var vi=0;vi<vis.length;vi++){
+    var pf=vis[vi].p, lum=vis[vi].lum;
+    var r=Math.round(80+lum*132), g2=Math.round(96+lum*140), b2=Math.round(112+lum*142);
+    ctx.beginPath();
+    ctx.moveTo(pv[pf[0]][0],pv[pf[0]][1]);
+    for(var k2=1;k2<pf.length;k2++) ctx.lineTo(pv[pf[k2]][0],pv[pf[k2]][1]);
+    ctx.closePath();
+    ctx.fillStyle="rgb("+r+","+g2+","+b2+")";
+    ctx.fill();
+    if(showEdges){
+      ctx.lineWidth=1;
+      ctx.strokeStyle="rgba(15,19,23,0.5)";
+      ctx.stroke();
+    }
+  }
+
+  /* dimension labels X / Y / Z on the outermost edge of each axis */
+  var letter={0:"X",1:"Y",2:"Z"};
+  var pick={0:null,1:null,2:null};
+  for(i=0;i<boxEdges.length;i++){
+    var ax=boxEdges[i][2], A2=corners[boxEdges[i][0]], B2=corners[boxEdges[i][1]];
+    var mid=[(A2[0]+B2[0])/2,(A2[1]+B2[1])/2];
+    var score = (ax===1) ? -mid[0] : mid[1];
+    if(!pick[ax] || score>pick[ax].score) pick[ax]={score:score, mid:mid, A:A2, B:B2};
+  }
+  ctx.font="600 11px "+getComputedStyle(document.body).getPropertyValue("--mono");
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  for(var ax2=0;ax2<3;ax2++){
+    var P=pick[ax2]; if(!P) continue;
+    var dx=P.B[0]-P.A[0], dy=P.B[1]-P.A[1];
+    var len=Math.sqrt(dx*dx+dy*dy)||1;
+    var ox=-dy/len*15, oy=dx/len*15;
+    if(oy<0){ox=-ox;oy=-oy;}
+    ctx.strokeStyle="rgba(233,161,59,0.75)"; ctx.lineWidth=1; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(P.A[0]+ox,P.A[1]+oy); ctx.lineTo(P.B[0]+ox,P.B[1]+oy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(P.A[0]+ox*0.55,P.A[1]+oy*0.55); ctx.lineTo(P.A[0]+ox*1.35,P.A[1]+oy*1.35); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(P.B[0]+ox*0.55,P.B[1]+oy*0.55); ctx.lineTo(P.B[0]+ox*1.35,P.B[1]+oy*1.35); ctx.stroke();
+    var lx=P.mid[0]+ox*1.9, ly=P.mid[1]+oy*1.9;
+    var txt = letter[ax2]+" "+e[ax2].toFixed(1);
+    var w=ctx.measureText(txt).width;
+    ctx.fillStyle="rgba(15,19,23,0.82)";
+    ctx.fillRect(lx-w/2-4, ly-8, w+8, 16);
+    ctx.fillStyle="#E9A13B";
+    ctx.fillText(txt, lx, ly);
+  }
+}
+
+function loop(){
+  if(!dragging && !reduceMotion) spin += 0.0016;
+  draw();
+  requestAnimationFrame(loop);
+}
+
+/* ============ STL export ============ */
+// build() winds every face so the Newell normal points into the material.
+// STL wants outward normals, so each fan triangle is emitted reversed.
+function triangulate(g){
+  var tri=[], f, j;
+  for(f=0;f<g.faces.length;f++){
+    var poly=g.faces[f];
+    for(j=1;j<poly.length-1;j++) tri.push([poly[0], poly[j+1], poly[j]]);
+  }
+  return tri;
+}
+// LAT is even, so a vertex ring sits exactly on the equator: the sphere can be
+// cut there without creating new vertices. Each half is capped with a flat disc
+// and laid cut-side down, because a sphere cannot be printed whole.
+function sphereHalves(g){
+  var LON=g.meta.lon, half=g.meta.lat/2, j;
+  var eq=[]; for(j=0;j<LON;j++) eq.push(half*LON+j);
+  var upper=[], lower=[], f;
+  for(f=0;f<g.faces.length;f++) (Math.floor(f/LON) < half ? upper : lower).push(g.faces[f]);
+
+  function part(src, capAscending, flip){
+    var map={}, verts=[], faces=[], i, k;
+    function idx(v){
+      if(map[v]===undefined){
+        map[v]=verts.length;
+        var q=g.verts[v];
+        verts.push(flip ? [q[0],-q[1],-q[2]] : [q[0],q[1],q[2]]);
+      }
+      return map[v];
+    }
+    for(i=0;i<src.length;i++){
+      var poly=src[i], np=[];
+      for(k=0;k<poly.length;k++) np.push(idx(poly[k]));
+      faces.push(np);
+    }
+    var cap=[];
+    for(k=0;k<LON;k++) cap.push(idx(eq[capAscending ? k : LON-1-k]));
+    faces.push(cap);
+    var lo=[1e18,1e18,1e18], hi=[-1e18,-1e18,-1e18];
+    for(i=0;i<verts.length;i++) for(k=0;k<3;k++){
+      if(verts[i][k]<lo[k]) lo[k]=verts[i][k];
+      if(verts[i][k]>hi[k]) hi[k]=verts[i][k];
+    }
+    return {verts:verts, faces:faces, ext:[hi[0]-lo[0],hi[1]-lo[1],hi[2]-lo[2]]};
+  }
+  // upper half keeps material at +y, so its cap normal must point +y (descending);
+  // lower half is the mirror case, then rotated 180 deg about x to lie cut-side down
+  return [part(upper,false,false), part(lower,true,true)];
+}
+function mergeSideBySide(a,b,gap){
+  var verts=a.verts.slice(), faces=a.faces.slice(), i, k;
+  var dx=a.ext[0]/2 + b.ext[0]/2 + gap, base=verts.length;
+  for(i=0;i<b.verts.length;i++) verts.push([b.verts[i][0]+dx, b.verts[i][1], b.verts[i][2]]);
+  for(i=0;i<b.faces.length;i++){
+    var np=[];
+    for(k=0;k<b.faces[i].length;k++) np.push(base+b.faces[i][k]);
+    faces.push(np);
+  }
+  return {verts:verts, faces:faces, ext:[a.ext[0]+dx, Math.max(a.ext[1],b.ext[1]), Math.max(a.ext[2],b.ext[2])]};
+}
+function exportGeo(g){
+  if(!g.meta) return g;
+  var h=sphereHalves(g);
+  return mergeSideBySide(h[0], h[1], 4);
+}
+function stlBuffer(g, name){
+  // model Y is the extrusion axis; printers use Z as up, so rotate +90 deg
+  // about X: (x,y,z) -> (x,-z,y). Handedness is preserved.
+  var V=[], i;
+  for(i=0;i<g.verts.length;i++){ var v=g.verts[i]; V.push([v[0], -v[2], v[1]]); }
+  var minz=1e18;
+  for(i=0;i<V.length;i++) if(V[i][2]<minz) minz=V[i][2];
+  for(i=0;i<V.length;i++) V[i][2]-=minz;          // rest the body on the plate
+
+  var tri=triangulate(g), keep=[];
+  for(i=0;i<tri.length;i++){
+    var a=V[tri[i][0]], b=V[tri[i][1]], c=V[tri[i][2]];
+    var ux=b[0]-a[0], uy=b[1]-a[1], uz=b[2]-a[2];
+    var wx=c[0]-a[0], wy=c[1]-a[1], wz=c[2]-a[2];
+    var nx=uy*wz-uz*wy, ny=uz*wx-ux*wz, nz=ux*wy-uy*wx;
+    var nl=Math.sqrt(nx*nx+ny*ny+nz*nz);
+    if(nl < 1e-12) continue;                       // degenerate, e.g. sphere poles
+    keep.push([nx/nl,ny/nl,nz/nl,a,b,c]);
+  }
+  var buf=new ArrayBuffer(84+50*keep.length), dv=new DataView(buf);
+  for(i=0;i<80;i++) dv.setUint8(i, i<name.length ? (name.charCodeAt(i)&0x7F) : 32);
+  dv.setUint32(80, keep.length, true);
+  var o=84;
+  for(i=0;i<keep.length;i++){
+    var t=keep[i];
+    dv.setFloat32(o,t[0],true); dv.setFloat32(o+4,t[1],true); dv.setFloat32(o+8,t[2],true);
+    for(var k=0;k<3;k++){
+      var q=t[3+k];
+      dv.setFloat32(o+12+k*12, q[0], true);
+      dv.setFloat32(o+16+k*12, q[1], true);
+      dv.setFloat32(o+20+k*12, q[2], true);
+    }
+    dv.setUint16(o+48,0,true);
+    o+=50;
+  }
+  return buf;
+}
+function shapeName(o){
+  var nn=(o.fam==="sphere") ? "na" : String(o.n);
+  var q=(o.fam==="ring") ? o.hole : 0;
+  return o.fam+"_n"+nn+"_q"+q.toFixed(2)+"_r"+o.rx.toFixed(2)+"-"+o.ry.toFixed(2)+"-"+o.rz.toFixed(2)+"_L"+o.cube.toFixed(1);
+}
+/* minimal store-only ZIP writer: one download instead of N, so the browser
+   never has to be asked for permission to save multiple files */
+var CRCT=(function(){var t=new Uint32Array(256),c,n,k;
+  for(n=0;n<256;n++){c=n;for(k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);t[n]=c>>>0;}
+  return t;})();
+function crc32(u8){var c=0xFFFFFFFF;for(var i=0;i<u8.length;i++) c=CRCT[(c^u8[i])&0xFF]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function zipBuffer(files){
+  var enc=new TextEncoder(), parts=[], central=[], off=0, i;
+  for(i=0;i<files.length;i++){
+    var nm=enc.encode(files[i].name), data=files[i].data, crc=crc32(data);
+    var lh=new Uint8Array(30+nm.length), d=new DataView(lh.buffer);
+    d.setUint32(0,0x04034b50,true); d.setUint16(4,20,true); d.setUint16(6,0,true);
+    d.setUint16(8,0,true); d.setUint16(10,0,true); d.setUint16(12,0,true);
+    d.setUint32(14,crc,true); d.setUint32(18,data.length,true); d.setUint32(22,data.length,true);
+    d.setUint16(26,nm.length,true); d.setUint16(28,0,true);
+    lh.set(nm,30);
+    parts.push(lh, data);
+    var ch=new Uint8Array(46+nm.length), e=new DataView(ch.buffer);
+    e.setUint32(0,0x02014b50,true); e.setUint16(4,20,true); e.setUint16(6,20,true);
+    e.setUint16(8,0,true); e.setUint16(10,0,true); e.setUint16(12,0,true); e.setUint16(14,0,true);
+    e.setUint32(16,crc,true); e.setUint32(20,data.length,true); e.setUint32(24,data.length,true);
+    e.setUint16(28,nm.length,true); e.setUint16(30,0,true); e.setUint16(32,0,true);
+    e.setUint16(34,0,true); e.setUint16(36,0,true); e.setUint32(38,0,true);
+    e.setUint32(42,off,true); ch.set(nm,46);
+    central.push(ch);
+    off += lh.length + data.length;
+  }
+  var csize=0;
+  for(i=0;i<central.length;i++) csize+=central[i].length;
+  var eo=new Uint8Array(22), v=new DataView(eo.buffer);
+  v.setUint32(0,0x06054b50,true); v.setUint16(4,0,true); v.setUint16(6,0,true);
+  v.setUint16(8,files.length,true); v.setUint16(10,files.length,true);
+  v.setUint32(12,csize,true); v.setUint32(16,off,true); v.setUint16(20,0,true);
+  return new Blob(parts.concat(central,[eo]), {type:"application/zip"});
+}
+function saveSTL(g, name){
+  var blob=new Blob([stlBuffer(g,name)], {type:"model/stl"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=name+".stl";
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.parentNode.removeChild(a); }, 0);
+}
+function buildFrom(r){
+  var sv={fam:S.fam,n:S.n,rx:S.rx,ry:S.ry,rz:S.rz,hole:S.hole,cube:S.cube};
+  S.fam=r.fam; S.n=(r.fam==="sphere")?4:r.n; S.rx=r.rx; S.ry=r.ry; S.rz=r.rz;
+  S.hole=r.hole||0.5; S.cube=r.cubeSet;
+  var g=build();
+  S.fam=sv.fam; S.n=sv.n; S.rx=sv.rx; S.ry=sv.ry; S.rz=sv.rz; S.hole=sv.hole; S.cube=sv.cube;
+  return g;
+}
+document.getElementById("stl").addEventListener("click",function(){
+  saveSTL(exportGeo(geo), shapeName(S));
+});
+document.getElementById("zip").addEventListener("click",function(){
+  if(!rows.length){ return; }
+  var files=[], seen={}, i;
+  for(i=0;i<rows.length;i++){
+    var r=rows[i], nm=r.name;
+    if(seen[nm]){ nm = nm+"_"+(++seen[r.name]); } else { seen[r.name]=1; }
+    files.push({name:nm+".stl", data:new Uint8Array(stlBuffer(exportGeo(buildFrom(r)), nm))});
+  }
+  files.push({name:"parameters.csv", data:new TextEncoder().encode(csvText())});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(zipBuffer(files)); a.download="shape_set.zip";
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.parentNode.removeChild(a); },0);
+});
+
+/* ============ readout ============ */
+var readout=document.getElementById("readout");
+function fmt(x,n){ return x.toFixed(n===undefined?1:n); }
+function renderReadout(){
+  var m=met;
+  var cells=[
+    ["基底邊長", fmt(S.cube,1), "mm", ""],
+    ["X", fmt(m.x,1), "mm", "axis-a"],
+    ["Y", fmt(m.y,1), "mm", "axis-a"],
+    ["Z", fmt(m.z,1), "mm", "axis-a"],
+    ["伸長比 a/b", fmt(m.elong,2), "", ""],
+    ["扁平比 b/c", fmt(m.flat,2), "", ""],
+    ["體積", fmt(m.V/1000,2), "cm³", ""],
+    ["填充率 f", fmt(m.f,3), "", ""],
+    ["理論質量", fmt(m.mass,2), "g", ""]
+  ];
+  var html="";
+  for(var i=0;i<cells.length;i++){
+    html += '<div class="cell '+cells[i][3]+'"><span class="k">'+cells[i][0]+'</span>'+
+            '<span class="v">'+cells[i][1]+(cells[i][2]?'<small>'+cells[i][2]+'</small>':'')+'</span></div>';
+  }
+  readout.innerHTML=html;
+}
+
+/* ============ update ============ */
+function update(){
+  document.getElementById("ngroup").style.display = (S.fam==="sphere") ? "none" : "";
+  document.getElementById("hgroup").style.display = (S.fam==="ring") ? "" : "none";
+  geo=build(); met=metrics(geo);
+  renderReadout();
+}
+
+/* ============ wiring ============ */
+function segSet(container, val){
+  var bs=container.querySelectorAll("button");
+  for(var i=0;i<bs.length;i++) bs[i].setAttribute("aria-pressed", bs[i].dataset.v===String(val) ? "true":"false");
+}
+var famNote={
+  prism:"柱體:等截面直柱。截面形狀於下方選擇。",
+  sphere:"球體:三軸皆相等時為正球,三軸不等即為橢球。匯出 STL 時自動沿赤道切半並排,列印後黏合。",
+  ring:"環體:與柱體相同,中央依內徑比鏤空。內外截面同形。",
+  cone:"錐體:底面收斂至單一頂點。底面形狀決定為圓錐或多角錐。"
+};
+document.getElementById("fam").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b) return;
+  S.fam=b.dataset.v; segSet(this,S.fam);
+  document.getElementById("famNote").textContent=famNote[S.fam];
+  update();
+});
+document.getElementById("ngon").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b) return;
+  S.n=b.dataset.v; segSet(this,S.n); update();
+});
+function bindSlider(id, key, label, dec, suffix){
+  var el=document.getElementById(id), out=document.getElementById(label);
+  el.addEventListener("input",function(){
+    S[key]=parseFloat(el.value);
+    out.textContent=S[key].toFixed(dec)+(suffix||"");
+    update();
+  });
+}
+bindSlider("rx","rx","rxV",2,"");
+bindSlider("ry","ry","ryV",2,"");
+bindSlider("rz","rz","rzV",2,"");
+bindSlider("hole","hole","holeV",2,"");
+document.getElementById("cube").addEventListener("input",function(){
+  var v=parseFloat(this.value); if(!isFinite(v)||v<=0) return;
+  S.cube=v; update();
+});
+document.getElementById("mat").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b) return;
+  S.dens=parseFloat(b.dataset.v); S.mat=b.dataset.n;
+  segSet(this,b.dataset.v);
+  document.getElementById("dens").value=S.dens;
+  update();
+});
+document.getElementById("dens").addEventListener("input",function(){
+  var v=parseFloat(this.value); if(!isFinite(v)||v<=0) return;
+  S.dens=v; S.mat="自訂";
+  segSet(document.getElementById("mat"), "");
+  update();
+});
+
+/* ============ reset to the basis cube ============ */
+document.getElementById("reset").addEventListener("click",function(){
+  S.fam="prism"; S.n=4; S.rx=1; S.ry=1; S.rz=1; S.cube=15;
+  document.getElementById("cube").value=15;
+  segSet(document.getElementById("fam"), S.fam);
+  document.getElementById("famNote").textContent=famNote[S.fam];
+  segSet(document.getElementById("ngon"), S.n);
+  var ids=[["rx","rxV"],["ry","ryV"],["rz","rzV"]];
+  for(var i=0;i<ids.length;i++){
+    document.getElementById(ids[i][0]).value=1;
+    document.getElementById(ids[i][1]).textContent="1.00";
+  }
+  update();
+});
+
+/* ============ list ============ */
+var listBody=document.getElementById("listBody"), countEl=document.getElementById("count");
+function renderList(){
+  countEl.textContent=rows.length;
+  if(!rows.length){
+    listBody.innerHTML='<div class="empty">尚未加入任何形體。調好參數後按「加入清單」,可累積成一份參數表並複製為 CSV。</div>';
+    return;
+  }
+  var h='<table><thead><tr><th>族</th><th>n</th><th>x</th><th>y</th><th>z</th><th>f</th><th>g</th><th></th><th></th></tr></thead><tbody>';
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i];
+    h+='<tr><td>'+r.famLabel+'</td><td>'+r.nLabel+'</td><td>'+r.x.toFixed(1)+
+       '</td><td>'+r.y.toFixed(1)+'</td><td>'+r.z.toFixed(1)+'</td><td>'+r.f.toFixed(3)+'</td><td>'+r.mass.toFixed(1)+
+       '</td><td><button class="del" data-d="'+i+'" aria-label="下載 STL">⇩</button></td>'+
+       '<td><button class="del" data-i="'+i+'" aria-label="移除">×</button></td></tr>';
+  }
+  h+='</tbody></table>';
+  listBody.innerHTML=h;
+}
+listBody.addEventListener("click",function(e){
+  var b=e.target.closest(".del"); if(!b) return;
+  if(b.dataset.d!==undefined){
+    var r=rows[parseInt(b.dataset.d,10)];
+    saveSTL(exportGeo(buildFrom(r)), r.name);
+    return;
+  }
+  rows.splice(parseInt(b.dataset.i,10),1); renderList();
+});
+var famLabels={prism:"柱",sphere:"球",cone:"錐",ring:"環"};
+document.getElementById("add").addEventListener("click",function(){
+  rows.push({
+    name:shapeName(S),
+    fam:S.fam, famLabel:famLabels[S.fam],
+    n:(S.fam==="sphere"?"":S.n), nLabel:(S.fam==="sphere"?"—":(S.n==="circle"?"○":S.n)),
+    hole:(S.fam==="ring"?S.hole:0),
+    rx:S.rx, ry:S.ry, rz:S.rz, cubeSet:S.cube,
+    x:met.x, y:met.y, z:met.z,
+    a:met.a,b:met.b,c:met.c,V:met.V,f:met.f,mass:met.mass,
+    elong:met.elong, flat:met.flat, mat:S.mat, dens:S.dens
+  });
+  renderList();
+});
+function csvText(){
+  var head="name,family,n,hole_ratio,rx,ry,rz,cube_edge_mm,x_mm,y_mm,z_mm,a_mm,b_mm,c_mm,elong,flat,volume_mm3,fill_ratio,material,density_g_cm3,mass_g";
+  var lines=[head];
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i];
+    lines.push([r.name,r.fam,r.n,r.hole.toFixed(3),r.rx.toFixed(3),r.ry.toFixed(3),r.rz.toFixed(3),r.cubeSet.toFixed(2),
+      r.x.toFixed(3),r.y.toFixed(3),r.z.toFixed(3),
+      r.a.toFixed(3),r.b.toFixed(3),r.c.toFixed(3),r.elong.toFixed(4),r.flat.toFixed(4),
+      r.V.toFixed(2),r.f.toFixed(5),r.mat,r.dens.toFixed(3),r.mass.toFixed(3)].join(","));
+  }
+  return lines.join("\n");
+}
+document.getElementById("copy").addEventListener("click",function(){
+  var txt=csvText();
+  var btn=this, orig=btn.textContent;
+  function done(ok){ btn.textContent = ok ? "已複製" : "複製失敗"; setTimeout(function(){btn.textContent=orig;},1400); }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){done(true);},function(){done(false);});
+  } else {
+    var ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); done(true); }catch(err){ done(false); }
+    document.body.removeChild(ta);
+  }
+});
+
+/* ============ go ============ */
+resize(); update(); renderList(); loop();
+})();
+</script>
+</body>
+</html>
