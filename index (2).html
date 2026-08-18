@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>形體參數軸</title>
+<style>
+  :root{
+    --ink:#0F1317;
+    --panel:#161B21;
+    --panel-2:#1B2229;
+    --line:#262E36;
+    --line-hi:#36414B;
+    --text:#D9E1E8;
+    --dim:#77868F;
+    --accent:#E9A13B;
+    --accent-dim:#8A6323;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:var(--sans);
+    font-size:14px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .shell{
+    display:grid;
+    grid-template-columns: minmax(0,1fr) 340px;
+    height:100vh;
+  }
+  @media (max-width: 900px){
+    .shell{grid-template-columns:1fr; height:auto}
+  }
+
+  /* ---------- viewport ---------- */
+  .stage{
+    position:relative;
+    border-right:1px solid var(--line);
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+  }
+  @media (max-width:900px){ .stage{border-right:none;border-bottom:1px solid var(--line)} }
+
+  .stage-head{
+    display:flex;
+    align-items:baseline;
+    gap:14px;
+    padding:16px 20px 10px;
+    border-bottom:1px solid var(--line);
+  }
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--dim);
+  }
+  .stage-title{
+    font-size:15px;
+    font-weight:600;
+    letter-spacing:.01em;
+    margin:0;
+  }
+  .canvas-wrap{
+    position:relative;
+    flex:1;
+    min-height:380px;
+  }
+  @media (max-width:900px){ .canvas-wrap{height:56vw;min-height:320px} }
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab}
+  canvas:active{cursor:grabbing}
+  .hint{
+    position:absolute;
+    left:20px;bottom:14px;
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:#4E5B65;
+    pointer-events:none;
+  }
+
+  /* ---------- readout strip ---------- */
+  .readout{
+    border-top:1px solid var(--line);
+    background:var(--panel);
+    padding:12px 20px 14px;
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(96px,1fr));
+    gap:2px 18px;
+  }
+  .cell{display:flex;flex-direction:column;gap:1px}
+  .cell .k{
+    font-family:var(--mono);
+    font-size:9.5px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--dim);
+  }
+  .cell .v{
+    font-family:var(--mono);
+    font-size:16px;
+    font-variant-numeric:tabular-nums;
+    letter-spacing:-.01em;
+  }
+  .cell .v small{font-size:10px;color:var(--dim);margin-left:2px;letter-spacing:0}
+  .cell.axis-a .v{color:var(--accent)}
+
+  /* ---------- controls ---------- */
+  .panel{
+    background:var(--panel);
+    overflow-y:auto;
+    padding:0 0 28px;
+  }
+  .group{border-bottom:1px solid var(--line);padding:16px 18px 18px}
+  .group > .glabel{
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--dim);
+    margin-bottom:10px;
+  }
+  .note{font-size:11.5px;color:var(--dim);margin-top:8px;line-height:1.45}
+
+  .seg{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:2px;overflow:hidden}
+  .seg button{
+    appearance:none;border:0;background:var(--panel-2);color:var(--dim);
+    font-family:var(--sans);font-size:13px;padding:9px 4px;cursor:pointer;
+    transition:background .12s,color .12s;
+  }
+  .seg button:hover{color:var(--text)}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:#141414;font-weight:600}
+
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chips button{
+    appearance:none;
+    min-width:38px;
+    padding:6px 9px;
+    background:transparent;
+    border:1px solid var(--line-hi);
+    color:var(--dim);
+    border-radius:2px;
+    font-family:var(--mono);
+    font-size:12.5px;
+    cursor:pointer;
+    transition:border-color .12s,color .12s,background .12s;
+  }
+  .chips button:hover{color:var(--text);border-color:var(--dim)}
+  .chips button[aria-pressed="true"]{
+    border-color:var(--accent);color:var(--accent);background:rgba(233,161,59,.09);
+  }
+
+  .slider{margin-top:14px}
+  .slider:first-of-type{margin-top:0}
+  .slider .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+  .slider .name{font-size:13px}
+  .slider .name em{font-style:normal;color:var(--dim);font-size:11px;margin-left:5px}
+  .slider .val{
+    font-family:var(--mono);font-size:13.5px;color:var(--accent);
+    font-variant-numeric:tabular-nums;
+  }
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:18px;background:transparent;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--line-hi);border-radius:0}
+  input[type=range]::-moz-range-track{height:2px;background:var(--line-hi)}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:11px;height:11px;margin-top:-4.5px;
+    background:var(--accent);border-radius:50%;border:0;
+  }
+  input[type=range]::-moz-range-thumb{width:11px;height:11px;background:var(--accent);border-radius:50%;border:0}
+  input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+
+  .dens{display:flex;align-items:center;gap:8px;margin-top:2px}
+  .dens input[type=number]{
+    width:78px;background:var(--panel-2);border:1px solid var(--line-hi);color:var(--text);
+    font-family:var(--mono);font-size:13px;padding:5px 7px;border-radius:2px;
+  }
+  .dens input[type=number]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .dens span{font-size:11.5px;color:var(--dim)}
+
+  .acts{display:flex;flex-wrap:wrap;gap:8px;padding:16px 18px}
+  .acts button{
+    flex:1 1 44%;appearance:none;padding:9px 10px;border-radius:2px;cursor:pointer;
+    font-family:var(--sans);font-size:12.5px;transition:background .12s,border-color .12s,color .12s;
+  }
+  .btn-primary{background:var(--accent);border:1px solid var(--accent);color:#141414;font-weight:600}
+  .btn-primary:hover{background:#F2AE4C}
+  .btn-ghost{background:transparent;border:1px solid var(--line-hi);color:var(--dim)}
+  .btn-ghost:hover{color:var(--text);border-color:var(--dim)}
+  .acts button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ---------- collected list ---------- */
+  .list{padding:0 18px}
+  .list h3{
+    font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--dim);font-weight:400;margin:2px 0 8px;
+  }
+  .empty{font-size:12px;color:#5A6873;border:1px dashed var(--line-hi);padding:14px;border-radius:2px}
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
+  th,td{text-align:right;padding:4px 3px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+  th{color:var(--dim);font-weight:400;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase}
+  td:first-child,th:first-child{text-align:left}
+  tbody tr:hover td{background:var(--panel-2)}
+  .del{appearance:none;background:none;border:0;color:#5A6873;cursor:pointer;font-family:var(--mono);padding:0 2px}
+  .del:hover{color:var(--accent)}
+  .chips.famchips button{font-family:var(--sans);font-size:12.5px;min-width:0}
+
+  .ghead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+  .ghead .glabel{margin-bottom:0}
+  .gdef{
+    appearance:none;background:transparent;border:1px solid var(--line-hi);
+    color:var(--dim);font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;
+    padding:3px 8px;border-radius:2px;cursor:pointer;flex:none;
+    transition:color .12s,border-color .12s;
+  }
+  .gdef:hover{color:var(--accent);border-color:var(--accent)}
+  .gdef:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .warn{
+    margin-top:11px;font-size:11.5px;line-height:1.5;color:#F2C579;
+    border-left:2px solid var(--accent);padding:7px 0 7px 10px;
+    background:rgba(233,161,59,.06);
+  }
+  .warn[hidden]{display:none}
+
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important} }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <section class="stage">
+    <div class="stage-head">
+      <span class="eyebrow">參數化刺激物</span>
+      <h1 class="stage-title">形體參數軸</h1>
+    </div>
+    <div class="canvas-wrap"><canvas id="cv"></canvas><div class="hint">拖曳旋轉　·　<span style="color:#B4823A">基底 L</span>　<span style="color:#5FB4D2">容器</span>　<span style="color:#77868F">包圍盒</span></div></div>
+    <div class="readout" id="readout"></div>
+  </section>
+
+  <aside class="panel" id="panel">
+
+    <div class="group">
+      <div class="ghead"><div class="glabel">容器與基底</div><button class="gdef" data-reset="base" title="這一組回到預設">預設</button></div>
+      <div class="dens">
+        <input type="number" id="container" value="80" min="10" max="400" step="1">
+        <span>mm　容器內部立方邊長</span>
+      </div>
+      <div class="dens" style="margin-top:8px">
+        <input type="number" id="cube" value="15" min="3" max="200" step="0.5">
+        <span>mm　基底立方體邊長 L</span>
+      </div>
+      <div class="dens" style="margin-top:8px">
+        <input type="number" id="minfeat" value="2.5" min="0.2" max="20" step="0.1">
+        <span>mm　最薄特徵警示門檻</span>
+      </div>
+      <div class="chips" id="showcont" role="group" aria-label="顯示容器" style="margin-top:10px">
+        <button data-v="1" aria-pressed="true">在視圖中顯示容器</button>
+      </div>
+      <p class="note">所有形體的體積等於邊長 L 的立方體。L 會自動壓到容器容得下的上限,上限值見讀出區的「L 上限」。視圖中橘色線框是基底立方體,水藍色線框是容器,灰虛線是形體的包圍盒。顯示容器時視圖會縮放到容納整個容器,關掉可放大檢視形體細節。</p>
+      <div class="warn" id="warn" hidden></div>
+    </div>
+
+    <div class="group">
+      <div class="ghead"><div class="glabel">形體族</div><button class="gdef" data-reset="fam" title="這一組回到預設">預設</button></div>
+      <div class="chips famchips" id="fam" role="group" aria-label="形體族">
+        <button data-v="frustum" aria-pressed="true">錐台</button>
+        <button data-v="sphere" aria-pressed="false">球體</button>
+        <button data-v="ring" aria-pressed="false">環／杯</button>
+        <button data-v="star" aria-pressed="false">星形柱</button>
+        <button data-v="dumbbell" aria-pressed="false">啞鈴</button>
+        <button data-v="branch" aria-pressed="false">分支</button>
+        <button data-v="stair" aria-pressed="false">階梯</button>
+      </div>
+      <p class="note" id="famNote">錐台:底面沿擠出軸線性收斂至頂面。頂面比 1 為等截面直柱,0 為尖錐。</p>
+    </div>
+
+    <div class="group" id="ngroup">
+      <div class="ghead"><div class="glabel">底面形狀</div><button class="gdef" data-reset="ngon" title="這一組回到預設">預設</button></div>
+      <div class="chips" id="ngon" role="group" aria-label="底面邊數">
+        <button data-v="3" aria-pressed="false">3</button>
+        <button data-v="4" aria-pressed="true">4</button>
+        <button data-v="5" aria-pressed="false">5</button>
+        <button data-v="6" aria-pressed="false">6</button>
+        <button data-v="7" aria-pressed="false">7</button>
+        <button data-v="8" aria-pressed="false">8</button>
+        <button data-v="9" aria-pressed="false">9</button>
+        <button data-v="10" aria-pressed="false">10</button>
+        <button data-v="11" aria-pressed="false">11</button>
+        <button data-v="12" aria-pressed="false">12</button>
+        <button data-v="circle" aria-pressed="false">圓</button>
+      </div>
+      <p class="note">正多邊形邊數。邊數遞增為連續趨近圓形的離散階梯。</p>
+    </div>
+
+    <div class="group" id="tgroup">
+      <div class="ghead"><div class="glabel">錐化與腰</div><button class="gdef" data-reset="taper" title="這一組回到預設">預設</button></div>
+      <div class="slider">
+        <div class="row"><span class="name">頂面比 t <em>頂 / 底</em></span><span class="val" id="topV">1.00</span></div>
+        <input type="range" id="top" min="0" max="2.5" step="0.01" value="1">
+      </div>
+      <div class="slider">
+        <div class="row"><span class="name">腰比 m <em>折點縮放</em></span><span class="val" id="waistV">1.00</span></div>
+        <input type="range" id="waist" min="0.06" max="2.5" step="0.01" value="1">
+      </div>
+      <div class="slider">
+        <div class="row"><span class="name">腰位置 h <em>佔全高</em></span><span class="val" id="wposV">0.50</span></div>
+        <input type="range" id="wpos" min="0" max="1" step="0.01" value="0.5">
+      </div>
+      <p class="note">t 為 1 是等截面直柱,0 是收斂至頂點的尖錐,大於 1 則上寬下窄。m 是高度 h 處的截面比例相對於線性內插值的倍數:m 等於 1 時折點消失,精確退化回單段錐台;m 小於 1 縮成腰,兩段錐尖端相抵;m 大於 1 外凸,兩段錐底面相抵。h 可取到 0 與 1,此時折點落在端面上,輪廓化為單一直線,不會留下一小段近乎零高度的突起;h 取 0.02 這種靠近端點但非端點的值仍會產生很短的一段,那是參數本身的意義,不是瑕疵。上下翻轉的等價關係是 (t, m, h) 與 (1/t, m/t, 1−h),取樣時可據此去重。</p>
+    </div>
+
+    <div class="group" id="hgroup">
+      <div class="ghead"><div class="glabel">中空</div><button class="gdef" data-reset="hollow" title="這一組回到預設">預設</button></div>
+      <div class="slider">
+        <div class="row"><span class="name">內徑 / 外徑</span><span class="val" id="holeV">0.50</span></div>
+        <input type="range" id="hole" min="0.05" max="0.9" step="0.01" value="0.5">
+      </div>
+      <div class="slider">
+        <div class="row"><span class="name">孔深 <em>佔全高</em></span><span class="val" id="depthV">1.00</span></div>
+        <input type="range" id="depth" min="0.05" max="1" step="0.01" value="1">
+      </div>
+      <p class="note">內外截面同形同邊數,壁為直壁。孔一律從頂面往下開:孔深 1 是貫穿,得到環體;小於 1 則底部留一層實心,得到杯,孔深愈小底愈厚;趨近 0 時回到實心柱,因此這條軸把柱與環連成一條連續路徑。杯只需要調內徑比與孔深兩項,例如內徑比 0.6、孔深 0.6 就是一只直壁杯。</p>
+    </div>
+
+    <div class="group" id="stargroup">
+      <div class="ghead"><div class="glabel">星形截面</div><button class="gdef" data-reset="star" title="這一組回到預設">預設</button></div>
+      <div class="chips" id="sk" role="group" aria-label="尖端數">
+        <button data-v="3" aria-pressed="false">3</button>
+        <button data-v="4" aria-pressed="false">4</button>
+        <button data-v="5" aria-pressed="true">5</button>
+        <button data-v="6" aria-pressed="false">6</button>
+        <button data-v="8" aria-pressed="false">8</button>
+      </div>
+      <div class="slider" style="margin-top:14px">
+        <div class="row"><span class="name">內縮比 <em>內 / 外半徑</em></span><span class="val" id="rinV">0.50</span></div>
+        <input type="range" id="rin" min="0.15" max="1" step="0.01" value="0.5">
+      </div>
+      <p class="note">內縮比 1 時退化為正 2k 邊形,因此與底面邊數階梯接壤。小於 1 引入向內凹的非凸幾何。</p>
+    </div>
+
+    <div class="group" id="dbgroup">
+      <div class="ghead"><div class="glabel">啞鈴</div><button class="gdef" data-reset="dumbbell" title="這一組回到預設">預設</button></div>
+      <div class="slider">
+        <div class="row"><span class="name">頸部比 <em>頸 / 端半徑</em></span><span class="val" id="neckV">0.50</span></div>
+        <input type="range" id="neck" min="0.15" max="0.95" step="0.01" value="0.5">
+      </div>
+      <div class="slider">
+        <div class="row"><span class="name">頸長比 <em>佔全長</em></span><span class="val" id="necklenV">0.40</span></div>
+        <input type="range" id="necklen" min="0.1" max="0.8" step="0.01" value="0.4">
+      </div>
+      <p class="note">兩端粗、中間細。頸部比 1 時退化為等截面直柱。質量集中於兩端,轉動慣量與均勻柱體不同。</p>
+    </div>
+
+    <div class="group" id="brgroup">
+      <div class="ghead"><div class="glabel">分支截面</div><button class="gdef" data-reset="branch" title="這一組回到預設">預設</button></div>
+      <div class="slider">
+        <div class="row"><span class="name">主幹厚 <em>佔 X</em></span><span class="val" id="tsV">0.35</span></div>
+        <input type="range" id="ts" min="0.15" max="0.7" step="0.01" value="0.35">
+      </div>
+      <div class="slider">
+        <div class="row"><span class="name">橫臂厚 <em>佔 Z</em></span><span class="val" id="taV">0.35</span></div>
+        <input type="range" id="ta" min="0.15" max="0.7" step="0.01" value="0.35">
+      </div>
+      <div class="slider">
+        <div class="row"><span class="name">主幹位置 u</span><span class="val" id="uV">0.00</span></div>
+        <input type="range" id="u" min="0" max="0.5" step="0.01" value="0">
+      </div>
+      <div class="slider">
+        <div class="row"><span class="name">橫臂位置 p</span><span class="val" id="pV">0.00</span></div>
+        <input type="range" id="p" min="0" max="0.5" step="0.01" value="0">
+      </div>
+      <p class="note">主幹貫穿 Z、橫臂貫穿 X,兩者聯集。u 為 0 主幹貼邊、0.5 居中;p 為 0 橫臂貼底、0.5 居中。(u,p) 四角依序為 L、T、⊢、十字,中間連續。厚度以包圍盒比例定義,與三軸比例正交。</p>
+    </div>
+
+    <div class="group" id="stgroup">
+      <div class="ghead"><div class="glabel">階數</div><button class="gdef" data-reset="stair" title="這一組回到預設">預設</button></div>
+      <div class="chips" id="nstep" role="group" aria-label="階數">
+        <button data-v="2" aria-pressed="false">2</button>
+        <button data-v="3" aria-pressed="true">3</button>
+        <button data-v="4" aria-pressed="false">4</button>
+        <button data-v="5" aria-pressed="false">5</button>
+        <button data-v="6" aria-pressed="false">6</button>
+      </div>
+      <p class="note">等寬等高的單調階梯。階數 2 時就是分支族 u=0、p=0 的 L 形,兩族在此接壤。階梯的長寬由三軸比例負責,此處不另設階比參數以避免與三軸比例共線。</p>
+    </div>
+
+    <div class="group">
+      <div class="ghead"><div class="glabel">三軸比例</div><button class="gdef" data-reset="ratio" title="這一組回到預設">預設</button></div>
+      <div class="slider">
+        <div class="row"><span class="name">X <em>截面寬</em></span><span class="val" id="rxV">1.00</span></div>
+        <input type="range" id="rx" min="0.2" max="5" step="0.01" value="1">
+      </div>
+      <div class="slider">
+        <div class="row"><span class="name">Y <em>擠出軸</em></span><span class="val" id="ryV">1.00</span></div>
+        <input type="range" id="ry" min="0.2" max="5" step="0.01" value="1">
+      </div>
+      <div class="slider">
+        <div class="row"><span class="name">Z <em>截面深</em></span><span class="val" id="rzV">1.00</span></div>
+        <input type="range" id="rz" min="0.2" max="5" step="0.01" value="1">
+      </div>
+      <p class="note">無單位,內部正規化為乘積等於 1。移動任一軸只改變比例,體積不變。實際毫米長度見讀出區。</p>
+    </div>
+
+    <div class="group">
+      <div class="ghead"><div class="glabel">材料</div><button class="gdef" data-reset="mat" title="這一組回到預設">預設</button></div>
+      <div class="chips" id="mat" role="group" aria-label="材料">
+        <button data-v="1.24" data-n="PLA Basic" aria-pressed="false">PLA Basic</button>
+        <button data-v="1.25" data-n="PETG Basic" aria-pressed="true">PETG Basic</button>
+        <button data-v="1.28" data-n="PETG HF" aria-pressed="false">PETG HF</button>
+        <button data-v="1.22" data-n="TPU 95A HF" aria-pressed="false">TPU 95A HF</button>
+      </div>
+      <div class="dens">
+        <input type="number" id="dens" value="1.25" min="0.05" max="12" step="0.01">
+        <span>g/cm³　可直接改為自訂值</span>
+      </div>
+      <p class="note">密度取自 Bambu Lab 技術資料表(ISO 1183)。Bambu Studio 內建 profile 的數值與資料表偶有出入,做質量對照時以實秤為準。</p>
+    </div>
+
+    <div class="acts">
+      <button class="btn-primary" id="add">加入清單</button>
+      <button class="btn-ghost" id="copy">複製 CSV</button>
+      <button class="btn-ghost" id="reset">回到基底</button>
+      <button class="btn-ghost" id="stl">下載 STL</button>
+      <button class="btn-ghost" id="zip">打包下載</button>
+    </div>
+
+    <div class="list">
+      <h3>清單 <span id="count">0</span></h3>
+      <div id="listBody"><div class="empty">尚未加入任何形體。調好參數後按「加入清單」,可累積成一份參數表並複製為 CSV。</div></div>
+    </div>
+
+  </aside>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============ state ============ */
+var S = {
+  fam:"frustum",
+  n:4, top:1, waist:1, wpos:0.5, // cross-section, taper, and the profile kink
+  hole:0.5, depth:1,          // ring: bore ratio, bore depth as fraction of height
+  sk:5, rin:0.5,              // star: point count, inner radius ratio
+  neck:0.5, necklen:0.4,      // dumbbell
+  ts:0.35, ta:0.35, u:0, p:0, // branch: stem/arm thickness, stem/arm placement
+  nstep:3,                    // stair
+  rx:1, ry:1, rz:1,
+  cube:15, container:80, minfeat:2.5,
+  dens:1.25, mat:"PETG Basic"
+};
+// every key that changes the geometry, so a list row can be rebuilt exactly
+var SHAPE_KEYS=["fam","n","top","waist","wpos","hole","depth","sk","rin","neck","necklen",
+                "ts","ta","u","p","nstep","rx","ry","rz","cube","container"];
+function snapshot(){ var o={},i; for(i=0;i<SHAPE_KEYS.length;i++) o[SHAPE_KEYS[i]]=S[SHAPE_KEYS[i]]; return o; }
+var rows = [];
+var showCont = true;           // view only, not part of the geometry
+var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ============ geometry ============ */
+/* Every family except the sphere is a cross-section in the XZ plane swept along
+   Y. A cross-section is a list of [x,z] wound counter-clockwise, matching the
+   increasing-angle polygon the original prism used, so the face winding below
+   keeps the Newell normal pointing into the material for all families. */
+
+function shoelace(poly){
+  var A=0,i,n=poly.length;
+  for(i=0;i<n;i++){ var a=poly[i], b=poly[(i+1)%n]; A += a[0]*b[1]-b[0]*a[1]; }
+  return A/2;
+}
+// drop repeated and collinear vertices: the branch generator emits a fixed
+// 12-point outline whose corners collapse for the L / T / flush cases
+function cleanPoly(poly){
+  var out=[],i,n=poly.length;
+  for(i=0;i<n;i++){
+    var a=poly[i], b=poly[(i+1)%n];
+    if(Math.abs(a[0]-b[0])<1e-9 && Math.abs(a[1]-b[1])<1e-9) continue;
+    out.push(a);
+  }
+  var res=[], m=out.length;
+  if(m<3) return poly;
+  for(i=0;i<m;i++){
+    var pr=out[(i-1+m)%m], cu=out[i], nx=out[(i+1)%m];
+    var cr=(cu[0]-pr[0])*(nx[1]-pr[1])-(cu[1]-pr[1])*(nx[0]-pr[0]);
+    if(Math.abs(cr)<1e-12) continue;
+    res.push(cu);
+  }
+  return res.length>=3 ? res : out;
+}
+function orient(poly){ return shoelace(poly)<0 ? poly.slice().reverse() : poly; }
+
+/* ---- cross-sections ---- */
+function polyNgon(){
+  var N=(S.n==="circle")?72:parseInt(S.n,10);
+  var off=Math.PI/N, poly=[], k;
+  for(k=0;k<N;k++){ var a=off+2*Math.PI*k/N; poly.push([0.5*Math.cos(a), 0.5*Math.sin(a)]); }
+  return poly;
+}
+function polyStar(){
+  var K=Math.max(3,Math.min(12,Math.round(S.sk)));
+  var ri=Math.min(1,Math.max(0.1,S.rin));
+  var poly=[], j;
+  for(j=0;j<2*K;j++){
+    var a=Math.PI/(2*K) + Math.PI*j/K;
+    var R=(j%2===0)?0.5:0.5*ri;
+    poly.push([R*Math.cos(a), R*Math.sin(a)]);
+  }
+  return poly;
+}
+/* stem spans the full Z of the unit square, arm spans the full X, so the union
+   always touches all four sides and the bbox is exactly the unit square */
+function polyBranch(){
+  var ts=Math.min(0.9,Math.max(0.05,S.ts)), ta=Math.min(0.9,Math.max(0.05,S.ta));
+  var uu=Math.min(0.5,Math.max(0,S.u)), pp=Math.min(0.5,Math.max(0,S.p));
+  var cx=(-0.5+ts/2)*(1-2*uu), cz=(-0.5+ta/2)*(1-2*pp);
+  var x0=cx-ts/2, x1=cx+ts/2, z0=cz-ta/2, z1=cz+ta/2;
+  var e=1e-9, poly=[];
+  poly.push([x0,-0.5]); poly.push([x1,-0.5]); poly.push([x1,z0]);
+  if(x1 < 0.5-e){ poly.push([0.5,z0]); poly.push([0.5,z1]); poly.push([x1,z1]); }
+  poly.push([x1,0.5]); poly.push([x0,0.5]); poly.push([x0,z1]);
+  if(x0 > -0.5+e){ poly.push([-0.5,z1]); poly.push([-0.5,z0]); poly.push([x0,z0]); }
+  return poly;
+}
+/* equal-tread staircase: n=2 reduces exactly to the branch L, so the two
+   families meet at that point instead of sitting on separate islands */
+function polyStair(){
+  var n=Math.max(2,Math.min(8,Math.round(S.nstep)));
+  var w=1/n, hh=1/n, poly=[], i;
+  poly.push([-0.5,-0.5]); poly.push([0.5,-0.5]);
+  for(i=1;i<n;i++){
+    var z=-0.5+i*hh;
+    poly.push([-0.5+(n-i+1)*w, z]);
+    poly.push([-0.5+(n-i)*w,   z]);
+  }
+  poly.push([-0.5+w, 0.5]); poly.push([-0.5, 0.5]);
+  return poly;
+}
+
+/* ---- sweep ---- */
+/* levels run bottom to top; s scales the cross-section. Face winding copies the
+   original prism exactly: bottom cap reversed, top cap forward, sides
+   [k, k2, up_k2, up_k]. */
+function extrudeLevels(poly, levels){
+  var verts=[], faces=[], N=poly.length, i, k;
+  for(i=0;i<levels.length;i++){
+    var s=levels[i].s;
+    for(k=0;k<N;k++) verts.push([poly[k][0]*s, levels[i].y, poly[k][1]*s]);
+  }
+  var bot=[]; for(k=N-1;k>=0;k--) bot.push(k); faces.push(bot);
+  var base=(levels.length-1)*N, top=[]; for(k=0;k<N;k++) top.push(base+k); faces.push(top);
+  // every level shares one cross-section orientation, so the side faces are
+  // planar quads and the volume solve and the STL see the same solid
+  for(i=0;i<levels.length-1;i++){
+    var b0=i*N, b1=(i+1)*N;
+    for(k=0;k<N;k++){ var k2=(k+1)%N; faces.push([b0+k, b0+k2, b1+k2, b1+k]); }
+  }
+  return {verts:verts, faces:faces};
+}
+// exact volume of the swept solid, from the shoelace area of the section.
+// Independent of the tetra-fan sum below, so the two are a real cross-check.
+function sweptVolume(poly, levels){
+  var A=Math.abs(shoelace(poly)), V=0, i;
+  for(i=0;i<levels.length-1;i++){
+    var h=levels[i+1].y-levels[i].y, s0=levels[i].s, s1=levels[i+1].s;
+    V += A*h*(s0*s0+s0*s1+s1*s1)/3;
+  }
+  return V;
+}
+function taper(){ return Math.min(2.5, Math.max(0, S.top)); }
+function waistRatio(){ return Math.min(2.5, Math.max(0.02, S.waist)); }
+function waistPos(){ return Math.min(1, Math.max(0, S.wpos)); }
+function waistInterior(){ var h=waistPos(); return h>1e-9 && h<1-1e-9; }
+function hasWaist(){ return Math.abs(waistRatio()-1) > 1e-9; }
+
+/* Cross-section scale along the sweep. The profile is two straight segments
+   meeting at height h, where the scale is the linear value times m. At m=1 both
+   segments collapse onto the single straight line of a plain frustum, so the
+   waist adds a shape axis without splitting the family into two. */
+function waistScale(){ var t=taper(), h=waistPos(); return waistRatio()*(1+(t-1)*h); }
+function profileScale(y){
+  var t=taper(), h=waistPos(), f=y+0.5, sw=waistScale();
+  // At h=0 or h=1 the kink sits on an end face, so the body is a single segment
+  // running from that face's scale to the other end. Taking the limit this way
+  // avoids leaving a near-zero-height stub that reads as an almost-flat ledge.
+  if(h<=1e-9)   return sw + (t-sw)*f;
+  if(h>=1-1e-9) return 1  + (sw-1)*f;
+  if(f<=h) return 1 + (sw-1)*(f/h);
+  return sw + (t-sw)*((f-h)/(1-h));
+}
+// the profile is piecewise linear, so its extremes sit on the breakpoints
+function profileExtremes(){
+  var a=profileScale(-0.5), b=profileScale(0.5), c=profileScale(-0.5+waistPos());
+  return [Math.min(a,b,c), Math.max(a,b,c)];
+}
+/* sweep heights: the two end faces, plus the waist and any extra height forced
+   onto a level so the piecewise profile stays exact */
+function profileLevels(extra){
+  var ys=[-0.5, 0.5], i, j;
+  var add=[];
+  if(hasWaist() && waistInterior()) add.push(-0.5+waistPos());
+  if(extra!==undefined && extra!==null) add.push(extra);
+  for(j=0;j<add.length;j++){
+    var y=add[j], snap=false;
+    for(i=0;i<ys.length;i++) if(Math.abs(ys[i]-y)<1e-6){ add[j]=ys[i]; snap=true; break; }
+    if(!snap) ys.push(y);
+  }
+  ys.sort(function(a,b){return a-b;});
+  return {ys:ys, snapped:add};
+}
+
+/* ---- families ---- */
+function buildFrustum(){
+  var poly=orient(cleanPoly(polyNgon()));
+  var ys=profileLevels().ys, levels=[], i;
+  for(i=0;i<ys.length;i++) levels.push({y:ys[i], s:profileScale(ys[i])});
+  var g=extrudeLevels(poly, levels);
+  g.Vana=sweptVolume(poly, levels);
+  return g;
+}
+function buildPrismatic(poly){
+  poly=orient(cleanPoly(poly));
+  var levels=[{y:-0.5,s:1},{y:0.5,s:1}];
+  var g=extrudeLevels(poly, levels);
+  g.Vana=sweptVolume(poly, levels);
+  return g;
+}
+function buildDumbbell(){
+  var poly=orient(cleanPoly(polyNgon()));
+  var nk=Math.min(0.98,Math.max(0.1,S.neck));
+  var nh=Math.min(0.45,Math.max(0.05,S.necklen/2));
+  var levels=[{y:-0.5,s:1},{y:-nh,s:1},{y:-nh,s:nk},{y:nh,s:nk},{y:nh,s:1},{y:0.5,s:1}];
+  var g=extrudeLevels(poly, levels);
+  g.Vana=sweptVolume(poly, levels);
+  return g;
+}
+/* Tube family: straight walls, no taper. q is the bore ratio and d
+   the bore depth as a fraction of the height, measured down from the top face.
+   d=1 is a through bore (a ring), d<1 leaves a floor (a cup), d->0 returns to a
+   solid prism. */
+function buildRingCup(){
+  var poly=orient(cleanPoly(polyNgon()));
+  var q=Math.min(0.95,Math.max(0.02,S.hole));
+  var d=Math.min(1,Math.max(0.02,S.depth));
+  var N=poly.length, verts=[], faces=[], k;
+  var yb=-0.5, yt=0.5, yf=0.5-d, through=(d>=0.999);
+  for(k=0;k<N;k++) verts.push([poly[k][0],   yb, poly[k][1]]);        // 0    outer bottom
+  for(k=0;k<N;k++) verts.push([poly[k][0],   yt, poly[k][1]]);        // N    outer top
+  for(k=0;k<N;k++) verts.push([poly[k][0]*q, yf, poly[k][1]*q]);      // 2N   bore floor
+  for(k=0;k<N;k++) verts.push([poly[k][0]*q, yt, poly[k][1]*q]);      // 3N   bore top
+  for(k=0;k<N;k++){
+    var k2=(k+1)%N;
+    faces.push([k, k2, N+k2, N+k]);                                   // outer wall
+    faces.push([3*N+k, 3*N+k2, 2*N+k2, 2*N+k]);                       // bore wall
+    faces.push([N+k, N+k2, 3*N+k2, 3*N+k]);                           // top annulus
+    if(through) faces.push([k2, k, 2*N+k, 2*N+k2]);                    // bottom annulus
+  }
+  if(!through){
+    var bc=[]; for(k=N-1;k>=0;k--) bc.push(k);      faces.push(bc);   // full bottom
+    var fc=[]; for(k=0;k<N;k++)    fc.push(2*N+k);  faces.push(fc);   // bore floor
+  }
+  var A=Math.abs(shoelace(poly));
+  return {verts:verts, faces:faces, Vana:A - A*q*q*d};
+}
+function buildSphere(){
+  var LAT=28, LON=56, R=0.5, verts=[], faces=[], i, j;
+  for(i=0;i<=LAT;i++){
+    var th=Math.PI*i/LAT;
+    for(j=0;j<LON;j++){
+      var ph=2*Math.PI*j/LON;
+      verts.push([R*Math.sin(th)*Math.cos(ph), R*Math.cos(th), R*Math.sin(th)*Math.sin(ph)]);
+    }
+  }
+  for(i=0;i<LAT;i++){
+    for(j=0;j<LON;j++){
+      var a=i*LON+j, b=i*LON+(j+1)%LON, c=(i+1)*LON+(j+1)%LON, d=(i+1)*LON+j;
+      faces.push([a,d,c,b]);
+    }
+  }
+  // faceted, so there is no exact analytic volume to check against
+  return {verts:verts, faces:faces, Vana:null, meta:{lat:LAT, lon:LON}};
+}
+
+/* ---- assemble, normalise volume, respect the container ---- */
+function rawBody(){
+  if(S.fam==="sphere")   return buildSphere();
+  if(S.fam==="ring")     return buildRingCup();
+  if(S.fam==="star")     return buildPrismatic(polyStar());
+  if(S.fam==="branch")   return buildPrismatic(polyBranch());
+  if(S.fam==="stair")    return buildPrismatic(polyStair());
+  if(S.fam==="dumbbell") return buildDumbbell();
+  return buildFrustum();
+}
+function build(){
+  var g=rawBody(), verts=g.verts, faces=g.faces, i, d;
+
+  var lo=[1e18,1e18,1e18], hi=[-1e18,-1e18,-1e18];
+  for(i=0;i<verts.length;i++) for(d=0;d<3;d++){
+    if(verts[i][d]<lo[d]) lo[d]=verts[i][d];
+    if(verts[i][d]>hi[d]) hi[d]=verts[i][d];
+  }
+  var raw=[hi[0]-lo[0], hi[1]-lo[1], hi[2]-lo[2]];
+  var ctr=[(hi[0]+lo[0])/2,(hi[1]+lo[1])/2,(hi[2]+lo[2])/2];
+
+  // fill ratio is invariant under anisotropic scaling, so it can be read off
+  // the unit body and used to solve for the scale that hits the target volume.
+  // This holds for any closed mesh, so the same solve serves every family.
+  var rawV = meshVolume({verts:verts, faces:faces});
+  var fill = rawV/Math.max(1e-12, raw[0]*raw[1]*raw[2]);
+  var check = (g.Vana && g.Vana>1e-12) ? rawV/g.Vana : null;
+
+  // three ratios normalised to unit product: proportion only, no volume change
+  var r=[Math.max(1e-6,S.rx), Math.max(1e-6,S.ry), Math.max(1e-6,S.rz)];
+  var gm=Math.pow(r[0]*r[1]*r[2], 1/3);
+  var nrm=[r[0]/gm, r[1]/gm, r[2]/gm];
+  var mx=Math.max(nrm[0], nrm[1], nrm[2]);
+
+  // longest bbox edge is L * (1/fill)^(1/3) * max(nrm), so the largest L whose
+  // body still fits an axis-aligned container of side C is:
+  var Lmax = S.container * Math.pow(fill, 1/3) / mx;
+  var Lset = S.cube, clamped = (Lset > Lmax + 1e-9);
+  var L = clamped ? Lmax : Lset;
+
+  var k=Math.pow(Math.max(1e-9, L*L*L/fill), 1/3);
+  var target=[k*nrm[0], k*nrm[1], k*nrm[2]], sc=[1,1,1];
+  for(d=0;d<3;d++) sc[d] = (raw[d] > 1e-9) ? target[d]/raw[d] : 1;
+  for(i=0;i<verts.length;i++) for(d=0;d<3;d++) verts[i][d]=(verts[i][d]-ctr[d])*sc[d];
+
+  return {verts:verts, faces:faces, ext:target, meta:g.meta||null,
+          fill:fill, check:check, Lmax:Lmax, Lset:Lset, L:L, clamped:clamped};
+}
+
+// signed volume of closed mesh via tetra fan, faces may be polygons
+function meshVolume(g){
+  var V=0, f, j, a, b, c;
+  for(f=0;f<g.faces.length;f++){
+    var poly=g.faces[f];
+    for(j=1;j<poly.length-1;j++){
+      a=g.verts[poly[0]]; b=g.verts[poly[j]]; c=g.verts[poly[j+1]];
+      V += (a[0]*(b[1]*c[2]-b[2]*c[1]) - a[1]*(b[0]*c[2]-b[2]*c[0]) + a[2]*(b[0]*c[1]-b[1]*c[0]))/6;
+    }
+  }
+  return Math.abs(V);
+}
+
+/* ============ metrics ============ */
+// thinnest printable feature, in mm. Per-family closed form on the scaled bbox.
+function thinnest(ext){
+  var X=ext[0], Y=ext[1], Z=ext[2], m=Math.min(X,Z);
+  if(S.fam==="ring"){
+    var wall=(1-Math.min(0.95,Math.max(0.02,S.hole)))*m/2;
+    var th=Math.min(wall, Y);
+    if(S.depth < 0.999) th=Math.min(th, (1-S.depth)*Y);
+    return th;
+  }
+  if(S.fam==="frustum"){
+    // an apex at either end prints fine, but a pinched waist in the middle is a
+    // real break risk, so only an inward waist counts as a thin feature
+    var th2=Math.min(X,Y,Z);
+    if(hasWaist() && waistInterior() && waistRatio()<1){
+      var e2=profileExtremes();
+      th2=Math.min(th2, (e2[0]/Math.max(1e-6,e2[1]))*m);
+    }
+    return th2;
+  }
+  if(S.fam==="branch")   return Math.min(S.ts*X, S.ta*Z, Y);
+  if(S.fam==="stair")    return Math.min(X/S.nstep, Z/S.nstep, Y);
+  if(S.fam==="star")     return Math.min(S.rin*X, S.rin*Z, Y);
+  if(S.fam==="dumbbell") return Math.min(S.neck*m, Y*S.necklen);
+  return Math.min(X,Y,Z);
+}
+function metrics(g){
+  var sorted = g.ext.slice().sort(function(p,q){return q-p;});
+  var a=sorted[0], b=sorted[1], c=sorted[2];
+  var V = meshVolume(g);                 // mm^3
+  var f = V/(a*b*c);
+  var mass = V/1000 * S.dens;            // cm^3 * g/cm^3
+  return {a:a,b:b,c:c,x:g.ext[0],y:g.ext[1],z:g.ext[2],V:V,f:f,mass:mass,
+          elong:a/b, flat:b/c, maxdim:a,
+          Lmax:g.Lmax, Lset:g.Lset, L:g.L, clamped:g.clamped,
+          check:g.check, thin:thinnest(g.ext)};
+}
+/* ============ renderer ============ */
+var cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+var W=0,H=0,DPR=1;
+var rotX=-0.38, rotY=0.62, dragging=false, lastX=0, lastY=0, spin=0;
+
+function resize(){
+  var r=cv.parentNode.getBoundingClientRect();
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  W=Math.max(1,Math.floor(r.width)); H=Math.max(1,Math.floor(r.height));
+  cv.width=W*DPR; cv.height=H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener("resize",resize);
+
+cv.addEventListener("pointerdown",function(e){dragging=true;lastX=e.clientX;lastY=e.clientY;cv.setPointerCapture(e.pointerId);});
+cv.addEventListener("pointermove",function(e){
+  if(!dragging)return;
+  rotY += (e.clientX-lastX)*0.008;
+  rotX += (e.clientY-lastY)*0.008;
+  rotX = Math.max(-1.45, Math.min(1.45, rotX));
+  lastX=e.clientX; lastY=e.clientY;
+});
+cv.addEventListener("pointerup",function(e){dragging=false;});
+cv.addEventListener("pointercancel",function(){dragging=false;});
+
+function rot(p, rx, ry){
+  var cy=Math.cos(ry), sy=Math.sin(ry);
+  var x=p[0]*cy + p[2]*sy, z=-p[0]*sy + p[2]*cy, y=p[1];
+  var cx=Math.cos(rx), sx=Math.sin(rx);
+  var y2=y*cx - z*sx, z2=y*sx + z*cx;
+  return [x,y2,z2];
+}
+
+var geo=null, met=null;
+
+function project(p, scale){
+  var d=520, z=p[2]+d;
+  var k=(d/Math.max(60,z))*scale;
+  return [W/2 + p[0]*k, H/2 - p[1]*k, p[2]];
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  if(!geo){return;}
+  var ry = rotY + (dragging||reduceMotion ? 0 : spin);
+  var basisL = met ? met.L : S.cube;
+  var fitSpan = Math.max(geo.ext[0],geo.ext[1],geo.ext[2],basisL);
+  if(showCont) fitSpan = Math.max(fitSpan, S.container);
+  var scale = Math.min(W,H)/ (fitSpan * 2.5);
+
+  // transform verts
+  var tv=[], i;
+  for(i=0;i<geo.verts.length;i++) tv.push(rot(geo.verts[i], rotX, ry));
+  var pv=[];
+  for(i=0;i<tv.length;i++) pv.push(project(tv[i], scale));
+
+  /* bounding box (signature: drafting dimension frame) */
+  var e=geo.ext, hx=e[0]/2, hy=e[1]/2, hz=e[2]/2;
+  var corners=[], sx,sy,sz;
+  for(sx=-1;sx<=1;sx+=2)for(sy=-1;sy<=1;sy+=2)for(sz=-1;sz<=1;sz+=2)
+    corners.push(project(rot([sx*hx,sy*hy,sz*hz],rotX,ry), scale));
+  function ci(x,y,z){ return ((x>0?1:0)*4)+((y>0?1:0)*2)+((z>0?1:0)); }
+  var boxEdges=[];
+  var signs=[-1,1];
+  for(var ai=0;ai<2;ai++)for(var bi=0;bi<2;bi++){
+    boxEdges.push([ci(-1,signs[ai],signs[bi]), ci(1,signs[ai],signs[bi]), 0]);
+    boxEdges.push([ci(signs[ai],-1,signs[bi]), ci(signs[ai],1,signs[bi]), 1]);
+    boxEdges.push([ci(signs[ai],signs[bi],-1), ci(signs[ai],signs[bi],1), 2]);
+  }
+  /* container: the body is guaranteed to fit inside this axis-aligned cube */
+  if(showCont){
+    var chh=S.container/2, ccor=[];
+    for(sx=-1;sx<=1;sx+=2)for(sy=-1;sy<=1;sy+=2)for(sz=-1;sz<=1;sz+=2)
+      ccor.push(project(rot([sx*chh,sy*chh,sz*chh],rotX,ry), scale));
+    ctx.save();
+    ctx.lineWidth=1;
+    ctx.strokeStyle="rgba(95,180,210,0.55)";
+    for(i=0;i<boxEdges.length;i++){
+      var Ac=ccor[boxEdges[i][0]], Bc=ccor[boxEdges[i][1]];
+      ctx.beginPath(); ctx.moveTo(Ac[0],Ac[1]); ctx.lineTo(Bc[0],Bc[1]); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /* basis cube: every body is scaled to this cube's volume */
+  var bh=basisL/2, bcor=[];
+  for(sx=-1;sx<=1;sx+=2)for(sy=-1;sy<=1;sy+=2)for(sz=-1;sz<=1;sz+=2)
+    bcor.push(project(rot([sx*bh,sy*bh,sz*bh],rotX,ry), scale));
+  ctx.save();
+  ctx.lineWidth=1;
+  ctx.strokeStyle="rgba(233,161,59,0.34)";
+  for(i=0;i<boxEdges.length;i++){
+    var Ab=bcor[boxEdges[i][0]], Bb=bcor[boxEdges[i][1]];
+    ctx.beginPath(); ctx.moveTo(Ab[0],Ab[1]); ctx.lineTo(Bb[0],Bb[1]); ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.setLineDash([3,4]);
+  ctx.lineWidth=1;
+  ctx.strokeStyle="rgba(120,138,150,0.32)";
+  for(i=0;i<boxEdges.length;i++){
+    var A=corners[boxEdges[i][0]], B=corners[boxEdges[i][1]];
+    ctx.beginPath(); ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); ctx.stroke();
+  }
+  ctx.restore();
+
+  /* solid: build() winds every face so the Newell normal points into the
+     material, so the outward normal is its negation for all families. Cull
+     back faces, then paint far to near: the ring is not convex, and its far
+     wall is visible through the hole. */
+  var CAMZ = -520;                       // camera sits on -z, +z runs away from viewer
+  var L=[-0.40,0.70,-0.58];
+  var Ln=Math.sqrt(L[0]*L[0]+L[1]*L[1]+L[2]*L[2]);
+  L=[L[0]/Ln,L[1]/Ln,L[2]/Ln];
+  // draw facet outlines only when the mesh is coarse enough for them to read
+  var showEdges = geo.faces.length <= 220;
+
+  var vis=[];
+  for(var fi=0;fi<geo.faces.length;fi++){
+    var p2=geo.faces[fi], np=p2.length, kk;
+
+    // Newell's method: robust for polygons that degenerate (e.g. sphere poles)
+    var nx=0, ny=0, nz=0, cx=0, cyy=0, cz=0;
+    for(kk=0;kk<np;kk++){
+      var A3=tv[p2[kk]], B3=tv[p2[(kk+1)%np]];
+      nx += (A3[1]-B3[1])*(A3[2]+B3[2]);
+      ny += (A3[2]-B3[2])*(A3[0]+B3[0]);
+      nz += (A3[0]-B3[0])*(A3[1]+B3[1]);
+      cx += A3[0]; cyy += A3[1]; cz += A3[2];
+    }
+    var nl=Math.sqrt(nx*nx+ny*ny+nz*nz);
+    if(nl < 1e-9) continue;
+    nx=-nx/nl; ny=-ny/nl; nz=-nz/nl;
+    cx/=np; cyy/=np; cz/=np;
+
+    // perspective back-face cull: is the camera on the outward side?
+    if(nx*(0-cx) + ny*(0-cyy) + nz*(CAMZ-cz) <= 0) continue;
+
+    var lam=Math.max(0, nx*L[0]+ny*L[1]+nz*L[2]);
+    vis.push({p:p2, d:cz, lum:0.24+0.76*Math.pow(lam,0.8)});
+  }
+  vis.sort(function(a,b){return b.d-a.d;});
+
+  for(var vi=0;vi<vis.length;vi++){
+    var pf=vis[vi].p, lum=vis[vi].lum;
+    var r=Math.round(80+lum*132), g2=Math.round(96+lum*140), b2=Math.round(112+lum*142);
+    ctx.beginPath();
+    ctx.moveTo(pv[pf[0]][0],pv[pf[0]][1]);
+    for(var k2=1;k2<pf.length;k2++) ctx.lineTo(pv[pf[k2]][0],pv[pf[k2]][1]);
+    ctx.closePath();
+    ctx.fillStyle="rgb("+r+","+g2+","+b2+")";
+    ctx.fill();
+    if(showEdges){
+      ctx.lineWidth=1;
+      ctx.strokeStyle="rgba(15,19,23,0.5)";
+      ctx.stroke();
+    }
+  }
+
+  /* dimension labels X / Y / Z on the outermost edge of each axis */
+  var letter={0:"X",1:"Y",2:"Z"};
+  var pick={0:null,1:null,2:null};
+  for(i=0;i<boxEdges.length;i++){
+    var ax=boxEdges[i][2], A2=corners[boxEdges[i][0]], B2=corners[boxEdges[i][1]];
+    var mid=[(A2[0]+B2[0])/2,(A2[1]+B2[1])/2];
+    var score = (ax===1) ? -mid[0] : mid[1];
+    if(!pick[ax] || score>pick[ax].score) pick[ax]={score:score, mid:mid, A:A2, B:B2};
+  }
+  ctx.font="600 11px "+getComputedStyle(document.body).getPropertyValue("--mono");
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  for(var ax2=0;ax2<3;ax2++){
+    var P=pick[ax2]; if(!P) continue;
+    var dx=P.B[0]-P.A[0], dy=P.B[1]-P.A[1];
+    var len=Math.sqrt(dx*dx+dy*dy)||1;
+    var ox=-dy/len*15, oy=dx/len*15;
+    if(oy<0){ox=-ox;oy=-oy;}
+    ctx.strokeStyle="rgba(233,161,59,0.75)"; ctx.lineWidth=1; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(P.A[0]+ox,P.A[1]+oy); ctx.lineTo(P.B[0]+ox,P.B[1]+oy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(P.A[0]+ox*0.55,P.A[1]+oy*0.55); ctx.lineTo(P.A[0]+ox*1.35,P.A[1]+oy*1.35); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(P.B[0]+ox*0.55,P.B[1]+oy*0.55); ctx.lineTo(P.B[0]+ox*1.35,P.B[1]+oy*1.35); ctx.stroke();
+    var lx=P.mid[0]+ox*1.9, ly=P.mid[1]+oy*1.9;
+    var txt = letter[ax2]+" "+e[ax2].toFixed(1);
+    var w=ctx.measureText(txt).width;
+    ctx.fillStyle="rgba(15,19,23,0.82)";
+    ctx.fillRect(lx-w/2-4, ly-8, w+8, 16);
+    ctx.fillStyle="#E9A13B";
+    ctx.fillText(txt, lx, ly);
+  }
+}
+
+function loop(){
+  if(!dragging && !reduceMotion) spin += 0.0016;
+  draw();
+  requestAnimationFrame(loop);
+}
+
+/* ============ STL export ============ */
+// build() winds every face so the Newell normal points into the material.
+// STL wants outward normals, so each fan triangle is emitted reversed.
+/* Ear clipping, not a fan. The star, branch and stair cross-sections are
+   concave, and a fan from vertex 0 across a concave cap emits overlapping and
+   flipped triangles: the volume sum still cancels out correctly, but the STL is
+   self-intersecting and a slicer will reject it. Ear clipping tessellates any
+   simple polygon properly. Returns triangles wound like the input face. */
+function earClip(verts, poly){
+  var n=poly.length, k;
+  if(n<3) return [];
+  if(n===3) return [[poly[0],poly[1],poly[2]]];
+
+  var nx=0, ny=0, nz=0;
+  for(k=0;k<n;k++){
+    var A=verts[poly[k]], B=verts[poly[(k+1)%n]];
+    nx += (A[1]-B[1])*(A[2]+B[2]);
+    ny += (A[2]-B[2])*(A[0]+B[0]);
+    nz += (A[0]-B[0])*(A[1]+B[1]);
+  }
+  // drop the dominant axis of the normal, so the projection stays non-degenerate
+  var ax=Math.abs(nx), ay=Math.abs(ny), az=Math.abs(nz), i0, i1;
+  if(ax>=ay && ax>=az){ i0=1; i1=2; }
+  else if(ay>=az){      i0=2; i1=0; }
+  else {                i0=0; i1=1; }
+
+  var P=[];
+  for(k=0;k<n;k++){ var v=verts[poly[k]]; P.push([v[i0], v[i1]]); }
+
+  var a2=0;
+  for(k=0;k<n;k++){ var q=P[k], r=P[(k+1)%n]; a2 += q[0]*r[1]-r[0]*q[1]; }
+  var order=[]; for(k=0;k<n;k++) order.push(k);
+  var rev = a2<0;
+  if(rev) order.reverse();                 // walk counter-clockwise in projection
+
+  function cr(o,b,c){ return (b[0]-o[0])*(c[1]-o[1])-(b[1]-o[1])*(c[0]-o[0]); }
+  function inside(p,q,r,t){
+    return cr(q,r,p)>=-1e-12 && cr(r,t,p)>=-1e-12 && cr(t,q,p)>=-1e-12;
+  }
+  var work=order, out=[], guard=0, i, j;
+  while(work.length>2 && guard++ < 3*n+6){
+    var cut=-1;
+    for(i=0;i<work.length;i++){
+      var ia=work[(i-1+work.length)%work.length], ib=work[i], ic=work[(i+1)%work.length];
+      if(cr(P[ia],P[ib],P[ic]) <= 1e-14) continue;          // reflex or collinear
+      var blocked=false;
+      for(j=0;j<work.length;j++){
+        var ij=work[j];
+        if(ij===ia||ij===ib||ij===ic) continue;
+        if(inside(P[ij],P[ia],P[ib],P[ic])){ blocked=true; break; }
+      }
+      if(blocked) continue;
+      out.push([ia,ib,ic]); cut=i; break;
+    }
+    if(cut<0){                                              // degenerate remainder
+      for(i=1;i<work.length-1;i++) out.push([work[0],work[i],work[i+1]]);
+      work=[]; break;
+    }
+    work.splice(cut,1);
+  }
+  var tri=[];
+  for(i=0;i<out.length;i++){
+    var t=out[i];
+    tri.push(rev ? [poly[t[2]],poly[t[1]],poly[t[0]]] : [poly[t[0]],poly[t[1]],poly[t[2]]]);
+  }
+  return tri;
+}
+// STL wants outward normals, so each triangle is emitted reversed
+function triangulate(g){
+  var tri=[], f, i;
+  for(f=0;f<g.faces.length;f++){
+    var t=earClip(g.verts, g.faces[f]);
+    for(i=0;i<t.length;i++) tri.push([t[i][0], t[i][2], t[i][1]]);
+  }
+  return tri;
+}
+// LAT is even, so a vertex ring sits exactly on the equator: the sphere can be
+// cut there without creating new vertices. Each half is capped with a flat disc
+// and laid cut-side down, because a sphere cannot be printed whole.
+function sphereHalves(g){
+  var LON=g.meta.lon, half=g.meta.lat/2, j;
+  var eq=[]; for(j=0;j<LON;j++) eq.push(half*LON+j);
+  var upper=[], lower=[], f;
+  for(f=0;f<g.faces.length;f++) (Math.floor(f/LON) < half ? upper : lower).push(g.faces[f]);
+
+  function part(src, capAscending, flip){
+    var map={}, verts=[], faces=[], i, k;
+    function idx(v){
+      if(map[v]===undefined){
+        map[v]=verts.length;
+        var q=g.verts[v];
+        verts.push(flip ? [q[0],-q[1],-q[2]] : [q[0],q[1],q[2]]);
+      }
+      return map[v];
+    }
+    for(i=0;i<src.length;i++){
+      var poly=src[i], np=[];
+      for(k=0;k<poly.length;k++) np.push(idx(poly[k]));
+      faces.push(np);
+    }
+    var cap=[];
+    for(k=0;k<LON;k++) cap.push(idx(eq[capAscending ? k : LON-1-k]));
+    faces.push(cap);
+    var lo=[1e18,1e18,1e18], hi=[-1e18,-1e18,-1e18];
+    for(i=0;i<verts.length;i++) for(k=0;k<3;k++){
+      if(verts[i][k]<lo[k]) lo[k]=verts[i][k];
+      if(verts[i][k]>hi[k]) hi[k]=verts[i][k];
+    }
+    return {verts:verts, faces:faces, ext:[hi[0]-lo[0],hi[1]-lo[1],hi[2]-lo[2]]};
+  }
+  // upper half keeps material at +y, so its cap normal must point +y (descending);
+  // lower half is the mirror case, then rotated 180 deg about x to lie cut-side down
+  return [part(upper,false,false), part(lower,true,true)];
+}
+function mergeSideBySide(a,b,gap){
+  var verts=a.verts.slice(), faces=a.faces.slice(), i, k;
+  var dx=a.ext[0]/2 + b.ext[0]/2 + gap, base=verts.length;
+  for(i=0;i<b.verts.length;i++) verts.push([b.verts[i][0]+dx, b.verts[i][1], b.verts[i][2]]);
+  for(i=0;i<b.faces.length;i++){
+    var np=[];
+    for(k=0;k<b.faces[i].length;k++) np.push(base+b.faces[i][k]);
+    faces.push(np);
+  }
+  return {verts:verts, faces:faces, ext:[a.ext[0]+dx, Math.max(a.ext[1],b.ext[1]), Math.max(a.ext[2],b.ext[2])]};
+}
+function exportGeo(g){
+  if(!g.meta) return g;
+  var h=sphereHalves(g);
+  return mergeSideBySide(h[0], h[1], 4);
+}
+function stlBuffer(g, name){
+  // model Y is the extrusion axis; printers use Z as up, so rotate +90 deg
+  // about X: (x,y,z) -> (x,-z,y). Handedness is preserved.
+  var V=[], i;
+  for(i=0;i<g.verts.length;i++){ var v=g.verts[i]; V.push([v[0], -v[2], v[1]]); }
+  var minz=1e18;
+  for(i=0;i<V.length;i++) if(V[i][2]<minz) minz=V[i][2];
+  for(i=0;i<V.length;i++) V[i][2]-=minz;          // rest the body on the plate
+
+  var tri=triangulate(g), keep=[];
+  for(i=0;i<tri.length;i++){
+    var a=V[tri[i][0]], b=V[tri[i][1]], c=V[tri[i][2]];
+    var ux=b[0]-a[0], uy=b[1]-a[1], uz=b[2]-a[2];
+    var wx=c[0]-a[0], wy=c[1]-a[1], wz=c[2]-a[2];
+    var nx=uy*wz-uz*wy, ny=uz*wx-ux*wz, nz=ux*wy-uy*wx;
+    var nl=Math.sqrt(nx*nx+ny*ny+nz*nz);
+    if(nl < 1e-12) continue;                       // degenerate, e.g. sphere poles
+    keep.push([nx/nl,ny/nl,nz/nl,a,b,c]);
+  }
+  var buf=new ArrayBuffer(84+50*keep.length), dv=new DataView(buf);
+  for(i=0;i<80;i++) dv.setUint8(i, i<name.length ? (name.charCodeAt(i)&0x7F) : 32);
+  dv.setUint32(80, keep.length, true);
+  var o=84;
+  for(i=0;i<keep.length;i++){
+    var t=keep[i];
+    dv.setFloat32(o,t[0],true); dv.setFloat32(o+4,t[1],true); dv.setFloat32(o+8,t[2],true);
+    for(var k=0;k<3;k++){
+      var q=t[3+k];
+      dv.setFloat32(o+12+k*12, q[0], true);
+      dv.setFloat32(o+16+k*12, q[1], true);
+      dv.setFloat32(o+20+k*12, q[2], true);
+    }
+    dv.setUint16(o+48,0,true);
+    o+=50;
+  }
+  return buf;
+}
+function nf(v,d){ return Number(v).toFixed(d); }
+function shapeName(o, Lused){
+  var s=o.fam;
+  if(o.fam==="frustum")       s+="_n"+o.n+"_t"+nf(o.top,2)+(Math.abs(o.waist-1)>1e-9?"_m"+nf(o.waist,2)+"_h"+nf(o.wpos,2):"");
+  else if(o.fam==="ring")     s+="_n"+o.n+"_q"+nf(o.hole,2)+"_d"+nf(o.depth,2);
+  else if(o.fam==="star")     s+="_k"+o.sk+"_i"+nf(o.rin,2);
+  else if(o.fam==="dumbbell") s+="_n"+o.n+"_c"+nf(o.neck,2)+"_cl"+nf(o.necklen,2);
+  else if(o.fam==="branch")   s+="_ts"+nf(o.ts,2)+"_ta"+nf(o.ta,2)+"_u"+nf(o.u,2)+"_p"+nf(o.p,2);
+  else if(o.fam==="stair")    s+="_s"+o.nstep;
+  s+="_r"+nf(o.rx,2)+"-"+nf(o.ry,2)+"-"+nf(o.rz,2);
+  return s+"_L"+nf(Lused===undefined?o.cube:Lused,1);
+}
+/* minimal store-only ZIP writer: one download instead of N, so the browser
+   never has to be asked for permission to save multiple files */
+var CRCT=(function(){var t=new Uint32Array(256),c,n,k;
+  for(n=0;n<256;n++){c=n;for(k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);t[n]=c>>>0;}
+  return t;})();
+function crc32(u8){var c=0xFFFFFFFF;for(var i=0;i<u8.length;i++) c=CRCT[(c^u8[i])&0xFF]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function zipBuffer(files){
+  var enc=new TextEncoder(), parts=[], central=[], off=0, i;
+  for(i=0;i<files.length;i++){
+    var nm=enc.encode(files[i].name), data=files[i].data, crc=crc32(data);
+    var lh=new Uint8Array(30+nm.length), d=new DataView(lh.buffer);
+    d.setUint32(0,0x04034b50,true); d.setUint16(4,20,true); d.setUint16(6,0,true);
+    d.setUint16(8,0,true); d.setUint16(10,0,true); d.setUint16(12,0,true);
+    d.setUint32(14,crc,true); d.setUint32(18,data.length,true); d.setUint32(22,data.length,true);
+    d.setUint16(26,nm.length,true); d.setUint16(28,0,true);
+    lh.set(nm,30);
+    parts.push(lh, data);
+    var ch=new Uint8Array(46+nm.length), e=new DataView(ch.buffer);
+    e.setUint32(0,0x02014b50,true); e.setUint16(4,20,true); e.setUint16(6,20,true);
+    e.setUint16(8,0,true); e.setUint16(10,0,true); e.setUint16(12,0,true); e.setUint16(14,0,true);
+    e.setUint32(16,crc,true); e.setUint32(20,data.length,true); e.setUint32(24,data.length,true);
+    e.setUint16(28,nm.length,true); e.setUint16(30,0,true); e.setUint16(32,0,true);
+    e.setUint16(34,0,true); e.setUint16(36,0,true); e.setUint32(38,0,true);
+    e.setUint32(42,off,true); ch.set(nm,46);
+    central.push(ch);
+    off += lh.length + data.length;
+  }
+  var csize=0;
+  for(i=0;i<central.length;i++) csize+=central[i].length;
+  var eo=new Uint8Array(22), v=new DataView(eo.buffer);
+  v.setUint32(0,0x06054b50,true); v.setUint16(4,0,true); v.setUint16(6,0,true);
+  v.setUint16(8,files.length,true); v.setUint16(10,files.length,true);
+  v.setUint32(12,csize,true); v.setUint32(16,off,true); v.setUint16(20,0,true);
+  return new Blob(parts.concat(central,[eo]), {type:"application/zip"});
+}
+function saveSTL(g, name){
+  var blob=new Blob([stlBuffer(g,name)], {type:"model/stl"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=name+".stl";
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.parentNode.removeChild(a); }, 0);
+}
+function buildFrom(r){
+  var sv=snapshot(), i;
+  for(i=0;i<SHAPE_KEYS.length;i++) S[SHAPE_KEYS[i]]=r.P[SHAPE_KEYS[i]];
+  var g=build();
+  for(i=0;i<SHAPE_KEYS.length;i++) S[SHAPE_KEYS[i]]=sv[SHAPE_KEYS[i]];
+  return g;
+}
+document.getElementById("stl").addEventListener("click",function(){
+  saveSTL(exportGeo(geo), shapeName(S, met.L));
+});
+document.getElementById("zip").addEventListener("click",function(){
+  if(!rows.length){ return; }
+  var files=[], seen={}, i;
+  for(i=0;i<rows.length;i++){
+    var r=rows[i], nm=r.name;
+    if(seen[nm]){ nm = nm+"_"+(++seen[r.name]); } else { seen[r.name]=1; }
+    files.push({name:nm+".stl", data:new Uint8Array(stlBuffer(exportGeo(buildFrom(r)), nm))});
+  }
+  files.push({name:"parameters.csv", data:new TextEncoder().encode(csvText())});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(zipBuffer(files)); a.download="shape_set.zip";
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.parentNode.removeChild(a); },0);
+});
+/* ============ readout ============ */
+var readout=document.getElementById("readout"), warnEl=document.getElementById("warn");
+function fmt(x,n){ return x.toFixed(n===undefined?1:n); }
+function renderReadout(){
+  var m=met;
+  var cells=[
+    ["L 實際",      fmt(m.L,1),      "mm", ""],
+    ["L 上限",      fmt(m.Lmax,1),   "mm", m.clamped?"axis-a":""],
+    ["最長邊",      fmt(m.maxdim,1), "mm", ""],
+    ["容器",        fmt(S.container,0), "mm", ""],
+    ["X",           fmt(m.x,1),      "mm", "axis-a"],
+    ["Y",           fmt(m.y,1),      "mm", "axis-a"],
+    ["Z",           fmt(m.z,1),      "mm", "axis-a"],
+    ["伸長比 a/b",  fmt(m.elong,2),  "",   ""],
+    ["扁平比 b/c",  fmt(m.flat,2),   "",   ""],
+    ["體積",        fmt(m.V/1000,3), "cm³",""],
+    ["填充率 f",    fmt(m.f,3),      "",   ""],
+    ["最薄特徵",    fmt(m.thin,2),   "mm", ""],
+    ["理論質量",    fmt(m.mass,2),   "g",  ""],
+    ["體積校驗",    (m.check===null?"—":fmt(m.check,4)), "", ""]
+  ];
+  var html="";
+  for(var i=0;i<cells.length;i++){
+    html += '<div class="cell '+cells[i][3]+'"><span class="k">'+cells[i][0]+'</span>'+
+            '<span class="v">'+cells[i][1]+(cells[i][2]?'<small>'+cells[i][2]+'</small>':'')+'</span></div>';
+  }
+  readout.innerHTML=html;
+
+  var msgs=[];
+  if(m.clamped){
+    msgs.push("L 已由設定的 "+fmt(m.Lset,1)+" mm 壓到 "+fmt(m.L,1)+
+              " mm,否則最長邊會超過容器內徑 "+fmt(S.container,0)+" mm。此形狀在該容器下的體積上限即為此值。");
+  }
+  if(m.thin < S.minfeat){
+    msgs.push("最薄特徵 "+fmt(m.thin,2)+" mm 低於門檻 "+fmt(S.minfeat,2)+
+              " mm,列印後可能脆弱,搖晃撞擊時有損壞風險。");
+  }
+  if(m.check!==null && Math.abs(m.check-1)>0.005){
+    msgs.push("體積校驗偏離 1 達 "+fmt((m.check-1)*100,2)+" %,網格可能未封閉或有內部面,匯出前應檢查。");
+  }
+  if(msgs.length){ warnEl.hidden=false; warnEl.innerHTML=msgs.join("<br><br>"); }
+  else { warnEl.hidden=true; warnEl.innerHTML=""; }
+}
+
+/* ============ update ============ */
+var GROUPS={
+  ngroup:   ["frustum","ring","dumbbell"],
+  tgroup:   ["frustum"],
+  hgroup:   ["ring"],
+  stargroup:["star"],
+  dbgroup:  ["dumbbell"],
+  brgroup:  ["branch"],
+  stgroup:  ["stair"]
+};
+function update(){
+  for(var id in GROUPS){
+    if(!GROUPS.hasOwnProperty(id)) continue;
+    var on = GROUPS[id].indexOf(S.fam) >= 0;
+    document.getElementById(id).style.display = on ? "" : "none";
+  }
+  geo=build(); met=metrics(geo);
+  renderReadout();
+}
+
+/* One registry for every control, so a reset can restore any subset of the
+   state and put the matching widget back in step without duplicated tables. */
+var CONTROLS={
+  fam:      {t:"chips",  el:"fam"},
+  n:        {t:"chips",  el:"ngon"},
+  sk:       {t:"chips",  el:"sk"},
+  nstep:    {t:"chips",  el:"nstep"},
+  top:      {t:"slider", el:"top",     out:"topV",     d:2, s:""},
+  waist:    {t:"slider", el:"waist",   out:"waistV",   d:2, s:""},
+  wpos:     {t:"slider", el:"wpos",    out:"wposV",    d:2, s:""},
+  hole:     {t:"slider", el:"hole",    out:"holeV",    d:2, s:""},
+  depth:    {t:"slider", el:"depth",   out:"depthV",   d:2, s:""},
+  rin:      {t:"slider", el:"rin",     out:"rinV",     d:2, s:""},
+  neck:     {t:"slider", el:"neck",    out:"neckV",    d:2, s:""},
+  necklen:  {t:"slider", el:"necklen", out:"necklenV", d:2, s:""},
+  ts:       {t:"slider", el:"ts",      out:"tsV",      d:2, s:""},
+  ta:       {t:"slider", el:"ta",      out:"taV",      d:2, s:""},
+  u:        {t:"slider", el:"u",       out:"uV",       d:2, s:""},
+  p:        {t:"slider", el:"p",       out:"pV",       d:2, s:""},
+  rx:       {t:"slider", el:"rx",      out:"rxV",      d:2, s:""},
+  ry:       {t:"slider", el:"ry",      out:"ryV",      d:2, s:""},
+  rz:       {t:"slider", el:"rz",      out:"rzV",      d:2, s:""},
+  cube:     {t:"number", el:"cube"},
+  container:{t:"number", el:"container"},
+  minfeat:  {t:"number", el:"minfeat"},
+  dens:     {t:"number", el:"dens"}
+};
+function segSet(container, val){
+  var bs=container.querySelectorAll("button");
+  for(var i=0;i<bs.length;i++) bs[i].setAttribute("aria-pressed", bs[i].dataset.v===String(val) ? "true":"false");
+}
+function syncControl(key){
+  var c=CONTROLS[key]; if(!c) return;
+  if(c.t==="slider"){
+    document.getElementById(c.el).value=S[key];
+    document.getElementById(c.out).textContent=Number(S[key]).toFixed(c.d)+c.s;
+  } else if(c.t==="chips"){
+    segSet(document.getElementById(c.el), S[key]);
+  } else {
+    document.getElementById(c.el).value=S[key];
+  }
+}
+var famNote={
+  frustum:"\u9310\u53f0:\u622a\u9762\u6cbf\u64e0\u51fa\u8ef8\u7e2e\u653e\u3002\u8170\u6bd4 1 \u6642\u8f2a\u5ed3\u662f\u55ae\u4e00\u76f4\u7dda,\u5373\u55ae\u6bb5\u9310\u53f0;\u8170\u6bd4\u5c0f\u65bc 1 \u6298\u51fa\u8170,\u6210\u70ba\u5169\u6bb5\u9310\u5c16\u7aef\u76f8\u62b5,\u5927\u65bc 1 \u5247\u5169\u6bb5\u9310\u5e95\u9762\u76f8\u62b5\u3002",
+  sphere:"\u7403\u9ad4:\u4e09\u8ef8\u7686\u76f8\u7b49\u6642\u70ba\u6b63\u7403,\u4e09\u8ef8\u4e0d\u7b49\u5373\u70ba\u6a62\u7403\u3002\u532f\u51fa STL \u6642\u81ea\u52d5\u6cbf\u8d64\u9053\u5207\u534a\u4e26\u6392,\u5217\u5370\u5f8c\u9ecf\u5408\u3002",
+  ring:"\u74b0\uff0f\u676f:\u76f4\u58c1,\u4e2d\u592e\u4f9d\u5167\u5f91\u6bd4\u938f\u7a7a\u3002\u5b54\u5f9e\u9802\u9762\u5f80\u4e0b\u958b,\u5b54\u6df1 1 \u70ba\u8cab\u7a7f\u74b0\u9ad4,\u5c0f\u65bc 1 \u5247\u5e95\u90e8\u7559\u4e00\u5c64\u5be6\u5fc3,\u5373\u70ba\u676f\u3002",
+  star:"\u661f\u5f62\u67f1:\u622a\u9762\u70ba 2k \u500b\u9802\u9ede\u4ea4\u66ff\u5167\u5916\u7684\u661f\u5f62\u3002\u5167\u7e2e\u6bd4 1 \u6642\u9000\u5316\u70ba\u6b63 2k \u908a\u5f62,\u5c0f\u65bc 1 \u5f15\u5165\u975e\u51f8\u5e7e\u4f55\u3002",
+  dumbbell:"\u555e\u9234:\u5169\u7aef\u622a\u9762\u70ba\u5b8c\u6574\u591a\u908a\u5f62,\u4e2d\u6bb5\u6536\u7a84\u70ba\u9838\u90e8\u3002\u9838\u90e8\u6bd4 1 \u6642\u9000\u5316\u70ba\u7b49\u622a\u9762\u76f4\u67f1\u3002",
+  branch:"\u5206\u652f:\u4e3b\u5e79\u8207\u6a6b\u81c2\u7684\u806f\u96c6\u3002(u,p) \u56db\u89d2\u4f9d\u5e8f\u70ba L\u3001T\u3001\u22a2\u3001\u5341\u5b57,\u4e2d\u9593\u9023\u7e8c\u8b8a\u5316\u3002",
+  stair:"\u968e\u68af:\u7b49\u5bec\u7b49\u9ad8\u7684\u55ae\u8abf\u968e\u68af\u3002\u968e\u6578 2 \u5373\u70ba\u5206\u652f\u65cf\u7684 L \u5f62,\u5169\u65cf\u5728\u6b64\u63a5\u58e4\u3002"
+};
+var DEFAULTS={fam:"frustum", n:4, top:1, waist:1, wpos:0.5, hole:0.5, depth:1,
+  sk:5, rin:0.5, neck:0.5, necklen:0.4, ts:0.35, ta:0.35, u:0, p:0, nstep:3,
+  rx:1, ry:1, rz:1, cube:15, container:80, minfeat:2.5,
+  dens:1.25, mat:"PETG Basic"};
+// which keys each group's 預設 button restores
+var RESET_GROUPS={
+  base:    ["container","cube","minfeat"],
+  fam:     ["fam"],
+  ngon:    ["n"],
+  taper:   ["top","waist","wpos"],
+  hollow:  ["hole","depth"],
+  star:    ["sk","rin"],
+  dumbbell:["neck","necklen"],
+  branch:  ["ts","ta","u","p"],
+  stair:   ["nstep"],
+  ratio:   ["rx","ry","rz"],
+  mat:     ["dens"],
+  all:     null                       // null means every key in DEFAULTS
+};
+function resetKeys(keys){
+  var i, k;
+  if(!keys){ keys=[]; for(k in DEFAULTS) if(DEFAULTS.hasOwnProperty(k)) keys.push(k); }
+  for(i=0;i<keys.length;i++){
+    k=keys[i];
+    S[k]=DEFAULTS[k];
+    syncControl(k);
+    if(k==="fam") document.getElementById("famNote").textContent=famNote[S.fam];
+    if(k==="dens"){ S.mat=DEFAULTS.mat; segSet(document.getElementById("mat"), String(DEFAULTS.dens)); }
+  }
+  update();
+}
+document.getElementById("panel").addEventListener("click",function(e){
+  var b=e.target.closest(".gdef"); if(!b) return;
+  resetKeys(RESET_GROUPS[b.dataset.reset]);
+});
+document.getElementById("reset").addEventListener("click",function(){ resetKeys(null); });
+
+/* ============ wiring ============ */
+document.getElementById("fam").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b) return;
+  S.fam=b.dataset.v; segSet(this,S.fam);
+  document.getElementById("famNote").textContent=famNote[S.fam];
+  update();
+});
+function bindChips(id, key, asInt){
+  document.getElementById(id).addEventListener("click",function(e){
+    var b=e.target.closest("button"); if(!b) return;
+    S[key]= asInt ? parseInt(b.dataset.v,10) : b.dataset.v;
+    segSet(this, b.dataset.v); update();
+  });
+}
+bindChips("ngon","n",false);
+bindChips("sk","sk",true);
+bindChips("nstep","nstep",true);
+
+function bindSlider(key){
+  var c=CONTROLS[key], el=document.getElementById(c.el), out=document.getElementById(c.out);
+  el.addEventListener("input",function(){
+    S[key]=parseFloat(el.value);
+    out.textContent=S[key].toFixed(c.d)+c.s;
+    update();
+  });
+}
+["top","waist","wpos","hole","depth","rin","neck","necklen",
+ "ts","ta","u","p","rx","ry","rz"].forEach(bindSlider);
+
+function bindNumber(key, min){
+  document.getElementById(CONTROLS[key].el).addEventListener("input",function(){
+    var v=parseFloat(this.value); if(!isFinite(v)||v<min) return;
+    S[key]=v; update();
+  });
+}
+bindNumber("cube",0.1); bindNumber("container",5); bindNumber("minfeat",0.05);
+
+document.getElementById("showcont").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b) return;
+  showCont=!showCont;
+  b.setAttribute("aria-pressed", showCont?"true":"false");
+  b.textContent = showCont ? "\u5728\u8996\u5716\u4e2d\u986f\u793a\u5bb9\u5668" : "\u5df2\u96b1\u85cf\u5bb9\u5668";
+});
+document.getElementById("mat").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b) return;
+  S.dens=parseFloat(b.dataset.v); S.mat=b.dataset.n;
+  segSet(this,b.dataset.v);
+  document.getElementById("dens").value=S.dens;
+  update();
+});
+document.getElementById("dens").addEventListener("input",function(){
+  var v=parseFloat(this.value); if(!isFinite(v)||v<=0) return;
+  S.dens=v; S.mat="\u81ea\u8a02";
+  segSet(document.getElementById("mat"), "");
+  update();
+});
+
+/* ============ list ============ */
+var listBody=document.getElementById("listBody"), countEl=document.getElementById("count");
+var famLabels={frustum:"錐台",sphere:"球",ring:"環杯",star:"星",dumbbell:"啞鈴",branch:"分支",stair:"階梯"};
+function paramSummary(P){
+  if(P.fam==="frustum")  return "n"+P.n+" t"+nf(P.top,2)+(Math.abs(P.waist-1)>1e-9?" m"+nf(P.waist,2):"");
+  if(P.fam==="sphere")   return "—";
+  if(P.fam==="ring")     return "n"+P.n+" q"+nf(P.hole,2)+" d"+nf(P.depth,2);
+  if(P.fam==="star")     return "k"+P.sk+" i"+nf(P.rin,2);
+  if(P.fam==="dumbbell") return "n"+P.n+" c"+nf(P.neck,2);
+  if(P.fam==="branch")   return "u"+nf(P.u,2)+" p"+nf(P.p,2);
+  if(P.fam==="stair")    return "s"+P.nstep;
+  return "";
+}
+function renderList(){
+  countEl.textContent=rows.length;
+  if(!rows.length){
+    listBody.innerHTML='<div class="empty">尚未加入任何形體。調好參數後按「加入清單」,可累積成一份參數表並複製為 CSV。</div>';
+    return;
+  }
+  var h='<table><thead><tr><th>族</th><th>參數</th><th>x</th><th>y</th><th>z</th><th>薄</th><th>g</th><th></th><th></th></tr></thead><tbody>';
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i];
+    h+='<tr><td>'+r.famLabel+'</td><td>'+r.summary+'</td><td>'+r.x.toFixed(1)+
+       '</td><td>'+r.y.toFixed(1)+'</td><td>'+r.z.toFixed(1)+'</td><td>'+r.thin.toFixed(1)+
+       '</td><td>'+r.mass.toFixed(1)+
+       '</td><td><button class="del" data-d="'+i+'" aria-label="下載 STL">⇩</button></td>'+
+       '<td><button class="del" data-i="'+i+'" aria-label="移除">×</button></td></tr>';
+  }
+  h+='</tbody></table>';
+  listBody.innerHTML=h;
+}
+listBody.addEventListener("click",function(e){
+  var b=e.target.closest(".del"); if(!b) return;
+  if(b.dataset.d!==undefined){
+    var r=rows[parseInt(b.dataset.d,10)];
+    saveSTL(exportGeo(buildFrom(r)), r.name);
+    return;
+  }
+  rows.splice(parseInt(b.dataset.i,10),1); renderList();
+});
+document.getElementById("add").addEventListener("click",function(){
+  var P=snapshot();
+  rows.push({
+    P:P, name:shapeName(P, met.L),
+    famLabel:famLabels[P.fam], summary:paramSummary(P),
+    x:met.x, y:met.y, z:met.z, a:met.a, b:met.b, c:met.c,
+    V:met.V, f:met.f, mass:met.mass, elong:met.elong, flat:met.flat,
+    L:met.L, Lmax:met.Lmax, clamped:met.clamped, thin:met.thin,
+    mat:S.mat, dens:S.dens
+  });
+  renderList();
+});
+function csvText(){
+  var head=["name","family","n","top_ratio","waist_ratio","waist_pos","hole_ratio","bore_depth","star_k","star_rin",
+            "neck_ratio","neck_len","branch_ts","branch_ta","branch_u","branch_p","n_step",
+            "rx","ry","rz","container_mm","L_set_mm","L_used_mm","L_max_mm","clamped",
+            "x_mm","y_mm","z_mm","a_mm","b_mm","c_mm","elong","flat",
+            "volume_mm3","fill_ratio","min_feature_mm","material","density_g_cm3","mass_g"].join(",");
+  var lines=[head];
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i], P=r.P;
+    lines.push([r.name,P.fam,P.n,nf(P.top,3),nf(P.waist,3),nf(P.wpos,3),nf(P.hole,3),nf(P.depth,3),P.sk,nf(P.rin,3),
+      nf(P.neck,3),nf(P.necklen,3),nf(P.ts,3),nf(P.ta,3),nf(P.u,3),nf(P.p,3),P.nstep,
+      nf(P.rx,3),nf(P.ry,3),nf(P.rz,3),nf(P.container,1),
+      nf(P.cube,2),nf(r.L,3),nf(r.Lmax,3),(r.clamped?1:0),
+      nf(r.x,3),nf(r.y,3),nf(r.z,3),nf(r.a,3),nf(r.b,3),nf(r.c,3),nf(r.elong,4),nf(r.flat,4),
+      nf(r.V,2),nf(r.f,5),nf(r.thin,3),r.mat,nf(r.dens,3),nf(r.mass,3)].join(","));
+  }
+  return lines.join("\n");
+}
+document.getElementById("copy").addEventListener("click",function(){
+  var txt=csvText();
+  var btn=this, orig=btn.textContent;
+  function done(ok){ btn.textContent = ok ? "已複製" : "複製失敗"; setTimeout(function(){btn.textContent=orig;},1400); }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){done(true);},function(){done(false);});
+  } else {
+    var ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); done(true); }catch(err){ done(false); }
+    document.body.removeChild(ta);
+  }
+});
+
+/* ============ go ============ */
+resize(); update(); renderList(); loop();
+})();
+</script>
+</body>
+</html>
