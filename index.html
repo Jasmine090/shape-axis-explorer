@@ -2,472 +2,203 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>形體參數軸</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>物體集參數與層級編輯台</title>
 <style>
-  :root{
-    --ink:#0F1317;
-    --panel:#161B21;
-    --panel-2:#1B2229;
-    --line:#262E36;
-    --line-hi:#36414B;
-    --text:#D9E1E8;
-    --dim:#77868F;
-    --accent:#E9A13B;
-    --accent-dim:#8A6323;
-    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;height:100%}
-  body{
-    background:var(--ink);
-    color:var(--text);
-    font-family:var(--sans);
-    font-size:14px;
-    line-height:1.5;
-    -webkit-font-smoothing:antialiased;
-  }
-  .shell{
-    display:grid;
-    grid-template-columns: minmax(0,1fr) 340px;
-    height:100vh;
-  }
-  @media (max-width: 900px){
-    .shell{grid-template-columns:1fr; height:auto}
-  }
+:root{
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: ui-sans-serif, -apple-system, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --bg:#0F1317; --panel:#151B21; --panel2:#1B242C; --line:#26323C;
+  --ink:#DDE6EC; --dim:#8397A4; --faint:#5B6B78;
+  --amber:#E9A13B; --cyan:#5FB4D2; --bad:#D9634F; --ok:#6FBF8E;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--sans); font-size:13px; line-height:1.55; -webkit-font-smoothing:antialiased}
+.wrap{display:grid; grid-template-columns:172px 1fr 420px; height:100vh; overflow:hidden}
 
-  /* ---------- viewport ---------- */
-  .stage{
-    position:relative;
-    border-right:1px solid var(--line);
-    display:flex;
-    flex-direction:column;
-    min-height:0;
-  }
-  @media (max-width:900px){ .stage{border-right:none;border-bottom:1px solid var(--line)} }
+.rail{background:var(--panel); border-right:1px solid var(--line); overflow-y:auto; padding:14px 0}
+.rail h1{font-size:10px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--faint); margin:0 0 10px; padding:0 16px; font-weight:600}
+.cls{display:flex; align-items:center; gap:9px; width:100%; text-align:left;
+  padding:7px 16px; background:none; border:0; color:var(--dim);
+  font-family:var(--sans); font-size:13px; cursor:pointer; border-left:2px solid transparent}
+.cls:hover{color:var(--ink); background:var(--panel2)}
+.cls[aria-current="true"]{color:var(--ink); border-left-color:var(--amber); background:var(--panel2)}
+.cls .fam{margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--faint)}
+.railsec{font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint);
+  padding:14px 16px 5px; font-weight:600}
 
-  .stage-head{
-    display:flex;
-    align-items:baseline;
-    gap:14px;
-    padding:16px 20px 10px;
-    border-bottom:1px solid var(--line);
-  }
-  .eyebrow{
-    font-family:var(--mono);
-    font-size:10px;
-    letter-spacing:.18em;
-    text-transform:uppercase;
-    color:var(--dim);
-  }
-  .stage-title{
-    font-size:15px;
-    font-weight:600;
-    letter-spacing:.01em;
-    margin:0;
-  }
-  .canvas-wrap{
-    position:relative;
-    flex:1;
-    min-height:380px;
-  }
-  @media (max-width:900px){ .canvas-wrap{height:56vw;min-height:320px} }
-  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab}
-  canvas:active{cursor:grabbing}
-  .hint{
-    position:absolute;
-    left:20px;bottom:14px;
-    font-family:var(--mono);
-    font-size:10px;
-    letter-spacing:.1em;
-    text-transform:uppercase;
-    color:#4E5B65;
-    pointer-events:none;
-  }
+.view{position:relative; display:flex; flex-direction:column; min-width:0}
+.stage{flex:1; position:relative; min-height:0}
+#cv{width:100%; height:100%; display:block; cursor:grab; touch-action:none}
+#cv:active{cursor:grabbing}
+.badge{position:absolute; top:14px; left:16px; font-family:var(--mono); font-size:11px;
+  color:var(--dim); letter-spacing:.06em}
+.badge b{color:var(--ink); font-weight:600; letter-spacing:.02em}
+.hint{position:absolute; bottom:12px; left:16px; font-size:11px; color:var(--faint)}
+.flag{position:absolute; top:14px; right:16px; font-family:var(--mono); font-size:11px;
+  padding:3px 8px; border-radius:2px; display:none}
+.flag.on{display:block}
+.flag.warn{background:rgba(217,99,79,.16); color:var(--bad); border:1px solid rgba(217,99,79,.4)}
+.strip{border-top:1px solid var(--line); background:var(--panel);
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); font-family:var(--mono)}
+.cell{padding:8px 12px; border-right:1px solid var(--line)}
+.cell:last-child{border-right:0}
+.cell .k{font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint)}
+.cell .v{font-size:14px; color:var(--ink); margin-top:1px}
+.cell .v.warn{color:var(--bad)} .cell .v.ok{color:var(--ok)}
 
-  /* ---------- readout strip ---------- */
-  .readout{
-    border-top:1px solid var(--line);
-    background:var(--panel);
-    padding:12px 20px 14px;
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(96px,1fr));
-    gap:2px 18px;
-  }
-  .cell{display:flex;flex-direction:column;gap:1px}
-  .cell .k{
-    font-family:var(--mono);
-    font-size:9.5px;
-    letter-spacing:.14em;
-    text-transform:uppercase;
-    color:var(--dim);
-  }
-  .cell .v{
-    font-family:var(--mono);
-    font-size:16px;
-    font-variant-numeric:tabular-nums;
-    letter-spacing:-.01em;
-  }
-  .cell .v small{font-size:10px;color:var(--dim);margin-left:2px;letter-spacing:0}
-  .cell.axis-a .v{color:var(--accent)}
+.panel{background:var(--panel); border-left:1px solid var(--line); overflow:hidden;
+  padding:0; display:flex; flex-direction:column; min-height:0}
+.ptop{padding:14px 18px 0; flex:none}
+.tabs{flex:none}
+.phead{display:flex; align-items:baseline; gap:8px}
+.phead h2{font-size:17px; margin:0; font-weight:600}
+.phead span{font-family:var(--mono); font-size:11px; color:var(--faint)}
+.pdesc{color:var(--dim); font-size:12px; margin:2px 0 12px}
+.tabs{display:flex; gap:0; border-bottom:1px solid var(--line); padding:0 18px}
+.tabs button{background:none; border:0; border-bottom:2px solid transparent; color:var(--faint);
+  font-family:var(--sans); font-size:12.5px; padding:7px 12px; cursor:pointer; margin-bottom:-1px}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-selected="true"]{color:var(--amber); border-bottom-color:var(--amber)}
+.tabbody{padding:14px 18px 60px; flex:1 1 auto; min-height:0; overflow-y:scroll;
+  overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:var(--faint) transparent}
+.tabbody[hidden]{display:none}
+.tabbody::-webkit-scrollbar{width:9px}
+.tabbody::-webkit-scrollbar-track{background:transparent}
+.tabbody::-webkit-scrollbar-thumb{background:var(--faint); border-radius:5px;
+  border:2px solid var(--panel)}
+.tabbody::-webkit-scrollbar-thumb:hover{background:var(--faint)}
 
-  /* ---------- controls ---------- */
-  .panel{
-    background:var(--panel);
-    overflow-y:auto;
-    padding:0 0 28px;
-  }
-  .group{border-bottom:1px solid var(--line);padding:16px 18px 18px}
-  .group > .glabel{
-    font-family:var(--mono);
-    font-size:10px;
-    letter-spacing:.16em;
-    text-transform:uppercase;
-    color:var(--dim);
-    margin-bottom:10px;
-  }
-  .note{font-size:11.5px;color:var(--dim);margin-top:8px;line-height:1.45}
+.grp{margin-bottom:16px}
+.glab{font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint);
+  margin-bottom:8px; font-weight:600}
+.sl{margin-bottom:10px}
+.slrow{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:4px}
+.slrow .n{font-size:12px; color:var(--dim); flex:1}
+.slrow .n em{font-style:normal; color:var(--faint); font-size:11px; margin-left:5px}
+.slrow .fixmark{font-family:var(--mono); font-size:9.5px; color:var(--faint);
+  border:1px solid var(--line); padding:0 4px; border-radius:2px}
+input[type=number]{
+  width:74px; background:var(--panel2); border:1px solid var(--line); border-radius:2px;
+  color:var(--amber); font-family:var(--mono); font-size:12px; padding:3px 6px; text-align:right}
+input[type=number]:focus{outline:none; border-color:var(--cyan)}
+input[type=text].lv{
+  width:100%; background:var(--panel2); border:1px solid var(--line); border-radius:2px;
+  color:var(--ink); font-family:var(--mono); font-size:11.5px; padding:3px 6px}
+input[type=text].lv:focus{outline:none; border-color:var(--cyan)}
+input[type=range]{width:100%; -webkit-appearance:none; appearance:none; height:3px;
+  border-radius:2px; background:var(--line); outline:none; margin:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:13px; height:13px;
+  border-radius:50%; background:var(--amber); cursor:pointer; border:2px solid var(--panel)}
+input[type=range]::-moz-range-thumb{width:13px; height:13px; border-radius:50%;
+  background:var(--amber); cursor:pointer; border:2px solid var(--panel)}
+input[type=range]:focus-visible{outline:2px solid var(--cyan); outline-offset:3px}
+.chips{display:flex; flex-wrap:wrap; gap:5px}
+.chips button{font-family:var(--mono); font-size:11.5px; padding:4px 9px; border-radius:2px;
+  background:var(--panel2); border:1px solid var(--line); color:var(--dim); cursor:pointer}
+.chips button:hover{color:var(--ink); border-color:var(--faint)}
+.chips button[aria-pressed="true"]{background:var(--amber); border-color:var(--amber); color:#12171B}
+.note{font-size:11px; color:var(--faint); margin:6px 0 0; line-height:1.5}
+.acts{display:flex; gap:7px; margin:14px 0}
+.acts button{flex:1; padding:8px 0; border-radius:2px; font-family:var(--sans); font-size:12.5px;
+  cursor:pointer; border:1px solid var(--line); background:var(--panel2); color:var(--dim)}
+.acts button:hover{color:var(--ink)}
+.acts .prim{background:var(--amber); border-color:var(--amber); color:#12171B; font-weight:600}
+.acts .prim:hover{color:#12171B; filter:brightness(1.08)}
 
-  .seg{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:2px;overflow:hidden}
-  .seg button{
-    appearance:none;border:0;background:var(--panel-2);color:var(--dim);
-    font-family:var(--sans);font-size:13px;padding:9px 4px;cursor:pointer;
-    transition:background .12s,color .12s;
-  }
-  .seg button:hover{color:var(--text)}
-  .seg button[aria-pressed="true"]{background:var(--accent);color:#141414;font-weight:600}
-
-  .chips{display:flex;flex-wrap:wrap;gap:6px}
-  .chips button{
-    appearance:none;
-    min-width:38px;
-    padding:6px 9px;
-    background:transparent;
-    border:1px solid var(--line-hi);
-    color:var(--dim);
-    border-radius:2px;
-    font-family:var(--mono);
-    font-size:12.5px;
-    cursor:pointer;
-    transition:border-color .12s,color .12s,background .12s;
-  }
-  .chips button:hover{color:var(--text);border-color:var(--dim)}
-  .chips button[aria-pressed="true"]{
-    border-color:var(--accent);color:var(--accent);background:rgba(233,161,59,.09);
-  }
-
-  .slider{margin-top:14px}
-  .slider:first-of-type{margin-top:0}
-  .slider .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
-  .slider .name{font-size:13px}
-  .slider .name em{font-style:normal;color:var(--dim);font-size:11px;margin-left:5px}
-  .slider .val{
-    font-family:var(--mono);font-size:13.5px;color:var(--accent);
-    font-variant-numeric:tabular-nums;
-  }
-  input[type=range]{
-    -webkit-appearance:none;appearance:none;width:100%;height:18px;background:transparent;cursor:pointer;
-  }
-  input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--line-hi);border-radius:0}
-  input[type=range]::-moz-range-track{height:2px;background:var(--line-hi)}
-  input[type=range]::-webkit-slider-thumb{
-    -webkit-appearance:none;width:11px;height:11px;margin-top:-4.5px;
-    background:var(--accent);border-radius:50%;border:0;
-  }
-  input[type=range]::-moz-range-thumb{width:11px;height:11px;background:var(--accent);border-radius:50%;border:0}
-  input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
-
-  .dens{display:flex;align-items:center;gap:8px;margin-top:2px}
-  .dens input[type=number]{
-    width:78px;background:var(--panel-2);border:1px solid var(--line-hi);color:var(--text);
-    font-family:var(--mono);font-size:13px;padding:5px 7px;border-radius:2px;
-  }
-  .dens input[type=number]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-  .dens span{font-size:11.5px;color:var(--dim)}
-
-  .acts{display:flex;flex-wrap:wrap;gap:8px;padding:16px 18px}
-  .acts button{
-    flex:1 1 44%;appearance:none;padding:9px 10px;border-radius:2px;cursor:pointer;
-    font-family:var(--sans);font-size:12.5px;transition:background .12s,border-color .12s,color .12s;
-  }
-  .btn-primary{background:var(--accent);border:1px solid var(--accent);color:#141414;font-weight:600}
-  .btn-primary:hover{background:#F2AE4C}
-  .btn-ghost{background:transparent;border:1px solid var(--line-hi);color:var(--dim)}
-  .btn-ghost:hover{color:var(--text);border-color:var(--dim)}
-  .acts button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-
-  /* ---------- collected list ---------- */
-  .list{padding:0 18px}
-  .list h3{
-    font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
-    color:var(--dim);font-weight:400;margin:2px 0 8px;
-  }
-  .empty{font-size:12px;color:#5A6873;border:1px dashed var(--line-hi);padding:14px;border-radius:2px}
-  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
-  th,td{text-align:right;padding:4px 3px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
-  th{color:var(--dim);font-weight:400;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase}
-  td:first-child,th:first-child{text-align:left}
-  tbody tr:hover td{background:var(--panel-2)}
-  .del{appearance:none;background:none;border:0;color:#5A6873;cursor:pointer;font-family:var(--mono);padding:0 2px}
-  .del:hover{color:var(--accent)}
-  .chips.famchips button{font-family:var(--sans);font-size:12.5px;min-width:0}
-
-  .ghead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
-  .ghead .glabel{margin-bottom:0}
-  .gdef{
-    appearance:none;background:transparent;border:1px solid var(--line-hi);
-    color:var(--dim);font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;
-    padding:3px 8px;border-radius:2px;cursor:pointer;flex:none;
-    transition:color .12s,border-color .12s;
-  }
-  .gdef:hover{color:var(--accent);border-color:var(--accent)}
-  .gdef:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-
-  .warn{
-    margin-top:11px;font-size:11.5px;line-height:1.5;color:#F2C579;
-    border-left:2px solid var(--accent);padding:7px 0 7px 10px;
-    background:rgba(233,161,59,.06);
-  }
-  .warn[hidden]{display:none}
-
-  @media (prefers-reduced-motion: reduce){ *{transition:none !important} }
+/* level editor */
+.ax{border:1px solid var(--line); border-radius:3px; margin-bottom:12px; overflow:hidden}
+.axhd{display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--panel2)}
+.axhd .nm{font-size:12.5px; color:var(--ink); font-weight:600}
+.axhd .ty{font-family:var(--mono); font-size:10px; color:var(--faint); margin-left:auto}
+.axhd .rt{font-family:var(--mono); font-size:11px; color:var(--amber)}
+.axbd{padding:8px 10px}
+.lvrow{display:grid; grid-template-columns:26px 1fr; gap:8px; align-items:start; margin-bottom:6px}
+.lvrow:last-child{margin-bottom:0}
+.lvtag{font-family:var(--mono); font-size:11px; color:var(--faint); padding-top:4px}
+.pair{display:grid; grid-template-columns:auto 1fr auto 1fr; gap:5px; align-items:center; margin-bottom:4px}
+.pair:last-child{margin-bottom:0}
+.pair .side{font-family:var(--mono); font-size:10px; color:var(--faint); white-space:nowrap}
+.single{display:grid; grid-template-columns:1fr auto 1fr; gap:5px; align-items:center}
+.single{grid-template-columns:1fr auto 1fr auto}
+.single .dash{color:var(--faint); font-family:var(--mono); font-size:11px}
+.single .offtag{font-family:var(--mono); font-size:9.5px; color:var(--faint);
+  border:1px solid var(--line); padding:0 4px; border-radius:2px; white-space:nowrap}
+.single.off input.lv{color:var(--faint); background:transparent; border-style:dashed}
+.allow{display:flex; gap:5px; align-items:center}
+.tot{font-family:var(--mono); font-size:11px; color:var(--dim); padding:8px 10px;
+  border:1px solid var(--line); border-radius:3px; background:var(--panel2); margin-bottom:12px}
+.tot b{color:var(--amber)}
+.toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+  background:var(--amber); color:#12171B; font-size:12.5px; font-weight:600;
+  padding:8px 18px; border-radius:2px; opacity:0; pointer-events:none; transition:opacity .18s}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion: reduce){ .toast{transition:none} }
 </style>
 </head>
 <body>
-<div class="shell">
+<div class="wrap">
 
-  <section class="stage">
-    <div class="stage-head">
-      <span class="eyebrow">參數化刺激物</span>
-      <h1 class="stage-title">形體參數軸</h1>
+  <nav class="rail">
+    <h1>類別</h1>
+    <div id="rail"></div>
+    <div class="railsec">顯示</div>
+    <div style="padding:2px 16px 0">
+      <div class="chips" id="viewopt"><button data-k="cont" aria-pressed="false">容器框</button><button data-k="spin" aria-pressed="false">自轉</button></div>
     </div>
-    <div class="canvas-wrap"><canvas id="cv"></canvas><div class="hint">拖曳旋轉　·　<span style="color:#B4823A">基底 L</span>　<span style="color:#5FB4D2">容器</span>　<span style="color:#77868F">包圍盒</span></div></div>
-    <div class="readout" id="readout"></div>
-  </section>
+  </nav>
 
-  <aside class="panel" id="panel">
-
-    <div class="group">
-      <div class="ghead"><div class="glabel">容器與基底</div><button class="gdef" data-reset="base" title="這一組回到預設">預設</button></div>
-      <div class="dens">
-        <input type="number" id="container" value="80" min="10" max="400" step="1">
-        <span>mm　容器內部立方邊長</span>
-      </div>
-      <div class="dens" style="margin-top:8px">
-        <input type="number" id="cube" value="15" min="3" max="200" step="0.5">
-        <span>mm　基底立方體邊長 L</span>
-      </div>
-      <div class="dens" style="margin-top:8px">
-        <input type="number" id="minfeat" value="2.5" min="0.2" max="20" step="0.1">
-        <span>mm　最薄特徵警示門檻</span>
-      </div>
-      <div class="chips" id="showcont" role="group" aria-label="顯示容器" style="margin-top:10px">
-        <button data-v="1" aria-pressed="true">在視圖中顯示容器</button>
-      </div>
-      <p class="note">所有形體的體積等於邊長 L 的立方體。L 會自動壓到容器容得下的上限,上限值見讀出區的「L 上限」。視圖中橘色線框是基底立方體,水藍色線框是容器,灰虛線是形體的包圍盒。顯示容器時視圖會縮放到容納整個容器,關掉可放大檢視形體細節。</p>
-      <div class="warn" id="warn" hidden></div>
+  <main class="view">
+    <div class="stage">
+      <canvas id="cv"></canvas>
+      <div class="badge" id="badge"></div>
+      <div class="flag warn" id="flag"></div>
+      <div class="hint">拖曳旋轉</div>
     </div>
+    <div class="strip" id="strip"></div>
+  </main>
 
-    <div class="group">
-      <div class="ghead"><div class="glabel">形體族</div><button class="gdef" data-reset="fam" title="這一組回到預設">預設</button></div>
-      <div class="chips famchips" id="fam" role="group" aria-label="形體族">
-        <button data-v="frustum" aria-pressed="true">錐台</button>
-        <button data-v="sphere" aria-pressed="false">球體</button>
-        <button data-v="ring" aria-pressed="false">環／杯</button>
-        <button data-v="star" aria-pressed="false">星形柱</button>
-        <button data-v="dumbbell" aria-pressed="false">啞鈴</button>
-        <button data-v="branch" aria-pressed="false">分支</button>
-        <button data-v="stair" aria-pressed="false">階梯</button>
-      </div>
-      <p class="note" id="famNote">錐台:底面沿擠出軸線性收斂至頂面。頂面比 1 為等截面直柱,0 為尖錐。</p>
+  <aside class="panel">
+    <div class="ptop">
+      <div class="phead"><h2 id="ptitle"></h2><span id="pfam"></span></div>
+      <p class="pdesc" id="pdesc"></p>
     </div>
-
-    <div class="group" id="ngroup">
-      <div class="ghead"><div class="glabel">底面形狀</div><button class="gdef" data-reset="ngon" title="這一組回到預設">預設</button></div>
-      <div class="chips" id="ngon" role="group" aria-label="底面邊數">
-        <button data-v="3" aria-pressed="false">3</button>
-        <button data-v="4" aria-pressed="true">4</button>
-        <button data-v="5" aria-pressed="false">5</button>
-        <button data-v="6" aria-pressed="false">6</button>
-        <button data-v="7" aria-pressed="false">7</button>
-        <button data-v="8" aria-pressed="false">8</button>
-        <button data-v="9" aria-pressed="false">9</button>
-        <button data-v="10" aria-pressed="false">10</button>
-        <button data-v="11" aria-pressed="false">11</button>
-        <button data-v="12" aria-pressed="false">12</button>
-        <button data-v="circle" aria-pressed="false">圓</button>
-      </div>
-      <p class="note">正多邊形邊數。邊數遞增為連續趨近圓形的離散階梯。</p>
+    <div class="tabs">
+      <button id="tab1" aria-selected="true">調參數</button>
+      <button id="tab2" aria-selected="false">層級</button>
     </div>
-
-    <div class="group" id="tgroup">
-      <div class="ghead"><div class="glabel">錐化與腰</div><button class="gdef" data-reset="taper" title="這一組回到預設">預設</button></div>
-      <div class="slider">
-        <div class="row"><span class="name">頂面比 t <em>頂 / 底</em></span><span class="val" id="topV">1.00</span></div>
-        <input type="range" id="top" min="0" max="2.5" step="0.01" value="1">
-      </div>
-      <div class="slider">
-        <div class="row"><span class="name">腰比 m <em>折點縮放</em></span><span class="val" id="waistV">1.00</span></div>
-        <input type="range" id="waist" min="0.06" max="2.5" step="0.01" value="1">
-      </div>
-      <div class="slider">
-        <div class="row"><span class="name">腰位置 h <em>佔全高</em></span><span class="val" id="wposV">0.50</span></div>
-        <input type="range" id="wpos" min="0" max="1" step="0.01" value="0.5">
-      </div>
-      <p class="note">t 為 1 是等截面直柱,0 是收斂至頂點的尖錐,大於 1 則上寬下窄。m 是高度 h 處的截面比例相對於線性內插值的倍數:m 等於 1 時折點消失,精確退化回單段錐台;m 小於 1 縮成腰,兩段錐尖端相抵;m 大於 1 外凸,兩段錐底面相抵。h 可取到 0 與 1,此時折點落在端面上,輪廓化為單一直線,不會留下一小段近乎零高度的突起;h 取 0.02 這種靠近端點但非端點的值仍會產生很短的一段,那是參數本身的意義,不是瑕疵。上下翻轉的等價關係是 (t, m, h) 與 (1/t, m/t, 1−h),取樣時可據此去重。</p>
-    </div>
-
-    <div class="group" id="hgroup">
-      <div class="ghead"><div class="glabel">中空</div><button class="gdef" data-reset="hollow" title="這一組回到預設">預設</button></div>
-      <div class="slider">
-        <div class="row"><span class="name">內徑 / 外徑</span><span class="val" id="holeV">0.50</span></div>
-        <input type="range" id="hole" min="0.05" max="0.9" step="0.01" value="0.5">
-      </div>
-      <div class="slider">
-        <div class="row"><span class="name">孔深 <em>佔全高</em></span><span class="val" id="depthV">1.00</span></div>
-        <input type="range" id="depth" min="0.05" max="1" step="0.01" value="1">
-      </div>
-      <p class="note">內外截面同形同邊數,壁為直壁。孔一律從頂面往下開:孔深 1 是貫穿,得到環體;小於 1 則底部留一層實心,得到杯,孔深愈小底愈厚;趨近 0 時回到實心柱,因此這條軸把柱與環連成一條連續路徑。杯只需要調內徑比與孔深兩項,例如內徑比 0.6、孔深 0.6 就是一只直壁杯。</p>
-    </div>
-
-    <div class="group" id="stargroup">
-      <div class="ghead"><div class="glabel">星形截面</div><button class="gdef" data-reset="star" title="這一組回到預設">預設</button></div>
-      <div class="chips" id="sk" role="group" aria-label="尖端數">
-        <button data-v="3" aria-pressed="false">3</button>
-        <button data-v="4" aria-pressed="false">4</button>
-        <button data-v="5" aria-pressed="true">5</button>
-        <button data-v="6" aria-pressed="false">6</button>
-        <button data-v="8" aria-pressed="false">8</button>
-      </div>
-      <div class="slider" style="margin-top:14px">
-        <div class="row"><span class="name">內縮比 <em>內 / 外半徑</em></span><span class="val" id="rinV">0.50</span></div>
-        <input type="range" id="rin" min="0.15" max="1" step="0.01" value="0.5">
-      </div>
-      <p class="note">內縮比 1 時退化為正 2k 邊形,因此與底面邊數階梯接壤。小於 1 引入向內凹的非凸幾何。</p>
-    </div>
-
-    <div class="group" id="dbgroup">
-      <div class="ghead"><div class="glabel">啞鈴</div><button class="gdef" data-reset="dumbbell" title="這一組回到預設">預設</button></div>
-      <div class="slider">
-        <div class="row"><span class="name">頸部比 <em>頸 / 端半徑</em></span><span class="val" id="neckV">0.50</span></div>
-        <input type="range" id="neck" min="0.15" max="0.95" step="0.01" value="0.5">
-      </div>
-      <div class="slider">
-        <div class="row"><span class="name">頸長比 <em>佔全長</em></span><span class="val" id="necklenV">0.40</span></div>
-        <input type="range" id="necklen" min="0.1" max="0.8" step="0.01" value="0.4">
-      </div>
-      <p class="note">兩端粗、中間細。頸部比 1 時退化為等截面直柱。質量集中於兩端,轉動慣量與均勻柱體不同。</p>
-    </div>
-
-    <div class="group" id="brgroup">
-      <div class="ghead"><div class="glabel">分支截面</div><button class="gdef" data-reset="branch" title="這一組回到預設">預設</button></div>
-      <div class="slider">
-        <div class="row"><span class="name">主幹厚 <em>佔 X</em></span><span class="val" id="tsV">0.35</span></div>
-        <input type="range" id="ts" min="0.15" max="0.7" step="0.01" value="0.35">
-      </div>
-      <div class="slider">
-        <div class="row"><span class="name">橫臂厚 <em>佔 Z</em></span><span class="val" id="taV">0.35</span></div>
-        <input type="range" id="ta" min="0.15" max="0.7" step="0.01" value="0.35">
-      </div>
-      <div class="slider">
-        <div class="row"><span class="name">主幹位置 u</span><span class="val" id="uV">0.00</span></div>
-        <input type="range" id="u" min="0" max="0.5" step="0.01" value="0">
-      </div>
-      <div class="slider">
-        <div class="row"><span class="name">橫臂位置 p</span><span class="val" id="pV">0.00</span></div>
-        <input type="range" id="p" min="0" max="0.5" step="0.01" value="0">
-      </div>
-      <p class="note">主幹貫穿 Z、橫臂貫穿 X,兩者聯集。u 為 0 主幹貼邊、0.5 居中;p 為 0 橫臂貼底、0.5 居中。(u,p) 四角依序為 L、T、⊢、十字,中間連續。厚度以包圍盒比例定義,與三軸比例正交。</p>
-    </div>
-
-    <div class="group" id="stgroup">
-      <div class="ghead"><div class="glabel">階數</div><button class="gdef" data-reset="stair" title="這一組回到預設">預設</button></div>
-      <div class="chips" id="nstep" role="group" aria-label="階數">
-        <button data-v="2" aria-pressed="false">2</button>
-        <button data-v="3" aria-pressed="true">3</button>
-        <button data-v="4" aria-pressed="false">4</button>
-        <button data-v="5" aria-pressed="false">5</button>
-        <button data-v="6" aria-pressed="false">6</button>
-      </div>
-      <p class="note">等寬等高的單調階梯。階數 2 時就是分支族 u=0、p=0 的 L 形,兩族在此接壤。階梯的長寬由三軸比例負責,此處不另設階比參數以避免與三軸比例共線。</p>
-    </div>
-
-    <div class="group">
-      <div class="ghead"><div class="glabel">三軸比例</div><button class="gdef" data-reset="ratio" title="這一組回到預設">預設</button></div>
-      <div class="slider">
-        <div class="row"><span class="name">X <em>截面寬</em></span><span class="val" id="rxV">1.00</span></div>
-        <input type="range" id="rx" min="0.2" max="5" step="0.01" value="1">
-      </div>
-      <div class="slider">
-        <div class="row"><span class="name">Y <em>擠出軸</em></span><span class="val" id="ryV">1.00</span></div>
-        <input type="range" id="ry" min="0.2" max="5" step="0.01" value="1">
-      </div>
-      <div class="slider">
-        <div class="row"><span class="name">Z <em>截面深</em></span><span class="val" id="rzV">1.00</span></div>
-        <input type="range" id="rz" min="0.2" max="5" step="0.01" value="1">
-      </div>
-      <p class="note">無單位,內部正規化為乘積等於 1。移動任一軸只改變比例,體積不變。實際毫米長度見讀出區。</p>
-    </div>
-
-    <div class="group">
-      <div class="ghead"><div class="glabel">材料</div><button class="gdef" data-reset="mat" title="這一組回到預設">預設</button></div>
-      <div class="chips" id="mat" role="group" aria-label="材料">
-        <button data-v="1.24" data-n="PLA Basic" aria-pressed="false">PLA Basic</button>
-        <button data-v="1.25" data-n="PETG Basic" aria-pressed="true">PETG Basic</button>
-        <button data-v="1.28" data-n="PETG HF" aria-pressed="false">PETG HF</button>
-        <button data-v="1.22" data-n="TPU 95A HF" aria-pressed="false">TPU 95A HF</button>
-      </div>
-      <div class="dens">
-        <input type="number" id="dens" value="1.25" min="0.05" max="12" step="0.01">
-        <span>g/cm³　可直接改為自訂值</span>
-      </div>
-      <p class="note">密度取自 Bambu Lab 技術資料表(ISO 1183)。Bambu Studio 內建 profile 的數值與資料表偶有出入,做質量對照時以實秤為準。</p>
-    </div>
-
-    <div class="acts">
-      <button class="btn-primary" id="add">加入清單</button>
-      <button class="btn-ghost" id="copy">複製 CSV</button>
-      <button class="btn-ghost" id="reset">回到基底</button>
-      <button class="btn-ghost" id="stl">下載 STL</button>
-      <button class="btn-ghost" id="zip">打包下載</button>
-    </div>
-
-    <div class="list">
-      <h3>清單 <span id="count">0</span></h3>
-      <div id="listBody"><div class="empty">尚未加入任何形體。調好參數後按「加入清單」,可累積成一份參數表並複製為 CSV。</div></div>
-    </div>
-
+    <div class="tabbody" id="body1"></div>
+    <div class="tabbody" id="body2" hidden></div>
   </aside>
+
 </div>
+<div class="toast" id="toast"></div>
 
 <script>
 (function(){
 "use strict";
 
-/* ============ state ============ */
 var S = {
   fam:"frustum",
-  n:4, top:1, waist:1, wpos:0.5, // cross-section, taper, and the profile kink
-  hole:0.5, depth:1,          // ring: bore ratio, bore depth as fraction of height
-  sk:5, rin:0.5,              // star: point count, inner radius ratio
-  neck:0.5, necklen:0.4,      // dumbbell
-  ts:0.35, ta:0.35, u:0, p:0, // branch: stem/arm thickness, stem/arm placement
-  nstep:3,                    // stair
+  n:4, top:1, waist:1, wpos:0.5, wfrac:0.15,
+  hole:0.5, depth:1,
+  sk:5, rin:0.5,
+  neck:0.5, necklen:0.4,
+  ts:0.35, ta:0.35, u:0, p:0,
+  nstep:3,
   rx:1, ry:1, rz:1,
   cube:15, container:80, minfeat:2.5,
-  dens:1.25, mat:"PETG Basic"
+  dens:1.25
 };
-// every key that changes the geometry, so a list row can be rebuilt exactly
-var SHAPE_KEYS=["fam","n","top","waist","wpos","hole","depth","sk","rin","neck","necklen",
-                "ts","ta","u","p","nstep","rx","ry","rz","cube","container"];
-function snapshot(){ var o={},i; for(i=0;i<SHAPE_KEYS.length;i++) o[SHAPE_KEYS[i]]=S[SHAPE_KEYS[i]]; return o; }
-var rows = [];
-var showCont = true;           // view only, not part of the geometry
-var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+var showCont = false;
+var autoSpin = false;   // 自轉預設關閉
+var reduceMotion = true;
 
-/* ============ geometry ============ */
-/* Every family except the sphere is a cross-section in the XZ plane swept along
+/* ============ geometry core (verbatim from index.html) ============ */
+/*
    Y. A cross-section is a list of [x,z] wound counter-clockwise, matching the
    increasing-angle polygon the original prism used, so the face winding below
    keeps the Newell normal pointing into the material for all families. */
@@ -506,8 +237,7 @@ function polyNgon(){
   return poly;
 }
 function polyStar(){
-  var K=Math.max(3,Math.min(12,Math.round(S.sk)));
-  var ri=Math.min(1,Math.max(0.1,S.rin));
+  var K=starPoints(), ri=starInner();
   var poly=[], j;
   for(j=0;j<2*K;j++){
     var a=Math.PI/(2*K) + Math.PI*j/K;
@@ -519,8 +249,7 @@ function polyStar(){
 /* stem spans the full Z of the unit square, arm spans the full X, so the union
    always touches all four sides and the bbox is exactly the unit square */
 function polyBranch(){
-  var ts=Math.min(0.9,Math.max(0.05,S.ts)), ta=Math.min(0.9,Math.max(0.05,S.ta));
-  var uu=Math.min(0.5,Math.max(0,S.u)), pp=Math.min(0.5,Math.max(0,S.p));
+  var ts=branchTs(), ta=branchTa(), uu=branchU(), pp=branchP();
   var cx=(-0.5+ts/2)*(1-2*uu), cz=(-0.5+ta/2)*(1-2*pp);
   var x0=cx-ts/2, x1=cx+ts/2, z0=cz-ta/2, z1=cz+ta/2;
   var e=1e-9, poly=[];
@@ -533,7 +262,7 @@ function polyBranch(){
 /* equal-tread staircase: n=2 reduces exactly to the branch L, so the two
    families meet at that point instead of sitting on separate islands */
 function polyStair(){
-  var n=Math.max(2,Math.min(8,Math.round(S.nstep)));
+  var n=stairSteps();
   var w=1/n, hh=1/n, poly=[], i;
   poly.push([-0.5,-0.5]); poly.push([0.5,-0.5]);
   for(i=1;i<n;i++){
@@ -575,8 +304,46 @@ function sweptVolume(poly, levels){
   }
   return V;
 }
+/* One clamped accessor per parameter. The builders clamp defensively before
+   constructing geometry, so anything reading raw state sees a different shape
+   from the one that actually gets built. That mattered little while thinnest()
+   was advisory; now that it drives the L floor, a mismatch either lets an
+   unprintable shape through or forces a shape larger than it needs to be.
+   Every consumer must go through these, never through S directly. */
 function taper(){ return Math.min(2.5, Math.max(0, S.top)); }
-function waistRatio(){ return Math.min(2.5, Math.max(0.02, S.waist)); }
+function boreRatio(){ return Math.min(0.95, Math.max(0.02, S.hole)); }
+function boreDepthRaw(){ return Math.min(1, Math.max(0.02, S.depth)); }
+function boreThrough(){ return boreDepthRaw() >= 0.999; }
+function boreDepth(){ return boreThrough() ? 1 : boreDepthRaw(); }   // snapped
+function starPoints(){ return Math.max(3, Math.min(12, Math.round(S.sk))); }
+function starInner(){ return Math.min(1, Math.max(0.1, S.rin)); }
+function neckRatio(){ return Math.min(0.98, Math.max(0.1, S.neck)); }
+function neckHalf(){ return Math.min(0.45, Math.max(0.05, S.necklen/2)); }
+function branchTs(){ return Math.min(0.9, Math.max(0.05, S.ts)); }
+function branchTa(){ return Math.min(0.9, Math.max(0.05, S.ta)); }
+function branchU(){ return Math.min(0.5, Math.max(0, S.u)); }
+function branchP(){ return Math.min(0.5, Math.max(0, S.p)); }
+function stairSteps(){ return Math.max(2, Math.min(8, Math.round(S.nstep))); }
+/* Lower bound on the waist, so the generator cannot emit a neck too thin to
+   print in one piece. Expressed against the narrower end face: the less mass
+   sits above the waist, the thinner it is allowed to be, which is why a shape
+   tapering to a point may keep a slender waist while a straight cylinder may
+   not. Closed form, so no search is needed. */
+var WAIST_REF_FLOOR = 0.30;   // see note below
+function waistFloor(){
+  var t=taper(), h=waistPos(), lin=1+(t-1)*h;
+  if(lin<=1e-9) return 0.02;
+  // The reference is the narrower end face, but a shape tapering to a point has
+  // no narrower face and the rule would go vacuous exactly where the waist is
+  // most fragile. Floor the reference so it stays meaningful there. 0.30 is
+  // empirical, not derived: it is the smallest value that leaves no parameter
+  // combination which is simultaneously unprintable and container-feasible,
+  // across the swept grid. It only binds for top < 0.30; everything blunter is
+  // governed by the end face itself.
+  var ref = Math.max(Math.min(1, t), WAIST_REF_FLOOR);
+  return Math.min(1, Math.max(0.02, Math.max(0,S.wfrac)*ref/lin));
+}
+function waistRatio(){ return Math.min(2.5, Math.max(waistFloor(), S.waist)); }
 function waistPos(){ return Math.min(1, Math.max(0, S.wpos)); }
 function waistInterior(){ var h=waistPos(); return h>1e-9 && h<1-1e-9; }
 function hasWaist(){ return Math.abs(waistRatio()-1) > 1e-9; }
@@ -635,11 +402,13 @@ function buildPrismatic(poly){
 }
 function buildDumbbell(){
   var poly=orient(cleanPoly(polyNgon()));
-  var nk=Math.min(0.98,Math.max(0.1,S.neck));
-  var nh=Math.min(0.45,Math.max(0.05,S.necklen/2));
+  var nk=neckRatio(), nh=neckHalf();
   var levels=[{y:-0.5,s:1},{y:-nh,s:1},{y:-nh,s:nk},{y:nh,s:nk},{y:nh,s:1},{y:0.5,s:1}];
   var g=extrudeLevels(poly, levels);
   g.Vana=sweptVolume(poly, levels);
+  // the step from neck out to each end bulge is a 90 degree annular overhang,
+  // unprintable in any orientation, so this family is exported cut into three
+  g.meta={kind:"dumbbell", n:poly.length, levels:levels.length};
   return g;
 }
 /* Tube family: straight walls, no taper. q is the bore ratio and d
@@ -648,10 +417,9 @@ function buildDumbbell(){
    solid prism. */
 function buildRingCup(){
   var poly=orient(cleanPoly(polyNgon()));
-  var q=Math.min(0.95,Math.max(0.02,S.hole));
-  var d=Math.min(1,Math.max(0.02,S.depth));
+  var q=boreRatio(), d=boreDepth(), through=boreThrough();
   var N=poly.length, verts=[], faces=[], k;
-  var yb=-0.5, yt=0.5, yf=0.5-d, through=(d>=0.999);
+  var yb=-0.5, yt=0.5, yf=through?yb:(0.5-d);
   for(k=0;k<N;k++) verts.push([poly[k][0],   yb, poly[k][1]]);        // 0    outer bottom
   for(k=0;k<N;k++) verts.push([poly[k][0],   yt, poly[k][1]]);        // N    outer top
   for(k=0;k<N;k++) verts.push([poly[k][0]*q, yf, poly[k][1]*q]);      // 2N   bore floor
@@ -668,7 +436,10 @@ function buildRingCup(){
     var fc=[]; for(k=0;k<N;k++)    fc.push(2*N+k);  faces.push(fc);   // bore floor
   }
   var A=Math.abs(shoelace(poly));
-  return {verts:verts, faces:faces, Vana:A - A*q*q*d};
+  // the bore floor is snapped to the base once d crosses the through threshold,
+  // so the analytic volume must use the snapped depth too, not the raw d, or the
+  // cross-check disagrees with a mesh that is itself correct
+  return {verts:verts, faces:faces, Vana:A - A*q*q*d};   // d is already snapped
 }
 function buildSphere(){
   var LAT=28, LON=56, R=0.5, verts=[], faces=[], i, j;
@@ -686,7 +457,7 @@ function buildSphere(){
     }
   }
   // faceted, so there is no exact analytic volume to check against
-  return {verts:verts, faces:faces, Vana:null, meta:{lat:LAT, lon:LON}};
+  return {verts:verts, faces:faces, Vana:null, meta:{kind:"sphere", lat:LAT, lon:LON}};
 }
 
 /* ---- assemble, normalise volume, respect the container ---- */
@@ -726,8 +497,24 @@ function build(){
   // longest bbox edge is L * (1/fill)^(1/3) * max(nrm), so the largest L whose
   // body still fits an axis-aligned container of side C is:
   var Lmax = S.container * Math.pow(fill, 1/3) / mx;
-  var Lset = S.cube, clamped = (Lset > Lmax + 1e-9);
-  var L = clamped ? Lmax : Lset;
+
+  // Every thinnest-feature formula is linear in the extents and the extents are
+  // linear in L, so evaluating once at L=1 gives the exact L needed to reach the
+  // minimum printable feature size. L therefore has a floor as well as a ceiling.
+  var kR = Math.pow(Math.max(1e-9, 1/fill), 1/3);
+  var thinPerL = thinnest([kR*nrm[0], kR*nrm[1], kR*nrm[2]]);
+  var Lmin = (thinPerL > 1e-12) ? S.minfeat/thinPerL : Infinity;
+
+  var Lset = S.cube, L, clamped = false, infeasible = false;
+  if(Lmin > Lmax + 1e-9){
+    // no size satisfies both: too thin to print before it is small enough to fit
+    infeasible = true;
+  }
+  // 2026-08-30: NO auto-clamp. The requested L is used as-is so the view
+  // shows the true size; "clamped" now flags "outside the printable range
+  // [Lmin, Lmax]" instead of "was silently adjusted".
+  L = Lset;
+  clamped = (L < Lmin - 1e-9) || (L > Lmax + 1e-9);
 
   var k=Math.pow(Math.max(1e-9, L*L*L/fill), 1/3);
   var target=[k*nrm[0], k*nrm[1], k*nrm[2]], sc=[1,1,1];
@@ -735,7 +522,8 @@ function build(){
   for(i=0;i<verts.length;i++) for(d=0;d<3;d++) verts[i][d]=(verts[i][d]-ctr[d])*sc[d];
 
   return {verts:verts, faces:faces, ext:target, meta:g.meta||null,
-          fill:fill, check:check, Lmax:Lmax, Lset:Lset, L:L, clamped:clamped};
+          fill:fill, check:check, Lmax:Lmax, Lmin:Lmin, Lset:Lset, L:L,
+          clamped:clamped, infeasible:infeasible};
 }
 
 // signed volume of closed mesh via tetra fan, faces may be polygons
@@ -752,29 +540,119 @@ function meshVolume(g){
 }
 
 /* ============ metrics ============ */
+/* The bounding box width min(X,Z) is an upper bound on a polygon's true minimum
+   width, and they coincide only when the narrowest direction happens to line up
+   with an axis. Two things break that alignment: polyNgon's pi/N start offset
+   (odd n, and n = 2 mod 4, put the narrowest direction on a diagonal), and the
+   anisotropic scaling build() applies to hit a target bounding box, which shears
+   a regular polygon into an irregular one. Using min(X,Z) therefore overstates
+   wall, neck and core thickness, in the unsafe direction, on most edge counts.
+   These helpers measure the section itself instead. */
+function scaleSection(poly, ext){
+  var lo=[1e18,1e18], hi=[-1e18,-1e18], i;
+  for(i=0;i<poly.length;i++){
+    if(poly[i][0]<lo[0]) lo[0]=poly[i][0];
+    if(poly[i][0]>hi[0]) hi[0]=poly[i][0];
+    if(poly[i][1]<lo[1]) lo[1]=poly[i][1];
+    if(poly[i][1]>hi[1]) hi[1]=poly[i][1];
+  }
+  var sx=(hi[0]-lo[0]>1e-12) ? ext[0]/(hi[0]-lo[0]) : 1;
+  var sz=(hi[1]-lo[1]>1e-12) ? ext[2]/(hi[1]-lo[1]) : 1;
+  var out=[];
+  for(i=0;i<poly.length;i++) out.push([poly[i][0]*sx, poly[i][1]*sz]);
+  return out;
+}
+// minimum width of a convex polygon: the narrowest slab that still contains it,
+// which is always achieved perpendicular to one of its edges
+function polyMinWidth(poly){
+  var n=poly.length, best=1e18, i, j;
+  for(i=0;i<n;i++){
+    var a=poly[i], b=poly[(i+1)%n];
+    var ex=b[0]-a[0], ez=b[1]-a[1], L=Math.hypot(ex,ez);
+    if(L<1e-12) continue;
+    var nx=-ez/L, nz=ex/L, lo=1e18, hi=-1e18;
+    for(j=0;j<n;j++){ var t=poly[j][0]*nx+poly[j][1]*nz; if(t<lo)lo=t; if(t>hi)hi=t; }
+    if(hi-lo<best) best=hi-lo;
+  }
+  return best;
+}
+// smallest distance from the centre to an edge. For two concentric similar
+// polygons scaled by q, the wall between them is thinnest across this edge and
+// measures (1-q) times this value.
+function polyMinApothem(poly){
+  var n=poly.length, best=1e18, i;
+  for(i=0;i<n;i++){
+    var a=poly[i], b=poly[(i+1)%n];
+    var ex=b[0]-a[0], ez=b[1]-a[1], L=Math.hypot(ex,ez);
+    if(L<1e-12) continue;
+    var d=Math.abs(a[0]*(-ez/L) + a[1]*(ex/L));
+    if(d<best) best=d;
+  }
+  return best;
+}
+function ngonSection(ext){ return scaleSection(orient(cleanPoly(polyNgon())), ext); }
+/* The star's inward vertices bound its solid core; the arms taper to tips and
+   tips are deliberately excluded (see README). Only meaningful while the
+   section is concave: at rin >= cos(pi/K) there is no core, because there are
+   no arms springing from one, and this returns a polygon the shape does not
+   have. Callers must test convexity first — thinnest() does. */
+function starCoreSection(ext){
+  var K=starPoints(), ri=starInner(), core=[], j;
+  for(j=0;j<K;j++){
+    var a=Math.PI/(2*K) + Math.PI*(2*j+1)/K;
+    core.push([0.5*ri*Math.cos(a), 0.5*ri*Math.sin(a)]);
+  }
+  var full=orient(cleanPoly(polyStar()));
+  var lo=[1e18,1e18], hi=[-1e18,-1e18];
+  for(j=0;j<full.length;j++){
+    if(full[j][0]<lo[0]) lo[0]=full[j][0];
+    if(full[j][0]>hi[0]) hi[0]=full[j][0];
+    if(full[j][1]<lo[1]) lo[1]=full[j][1];
+    if(full[j][1]>hi[1]) hi[1]=full[j][1];
+  }
+  var sx=ext[0]/(hi[0]-lo[0]), sz=ext[2]/(hi[1]-lo[1]), out=[];
+  for(j=0;j<core.length;j++) out.push([core[j][0]*sx, core[j][1]*sz]);
+  return out;
+}
 // thinnest printable feature, in mm. Per-family closed form on the scaled bbox.
 function thinnest(ext){
-  var X=ext[0], Y=ext[1], Z=ext[2], m=Math.min(X,Z);
+  var X=ext[0], Y=ext[1], Z=ext[2];
   if(S.fam==="ring"){
-    var wall=(1-Math.min(0.95,Math.max(0.02,S.hole)))*m/2;
-    var th=Math.min(wall, Y);
-    if(S.depth < 0.999) th=Math.min(th, (1-S.depth)*Y);
+    var th=Math.min((1-boreRatio())*polyMinApothem(ngonSection(ext)), Y);
+    if(!boreThrough()) th=Math.min(th, (1-boreDepth())*Y);   // floor left under the bore
     return th;
   }
   if(S.fam==="frustum"){
-    // an apex at either end prints fine, but a pinched waist in the middle is a
-    // real break risk, so only an inward waist counts as a thin feature
-    var th2=Math.min(X,Y,Z);
+    // An apex at either end prints fine, so the end faces must not enter this
+    // estimate: profileExtremes() spans the whole profile including both ends,
+    // so at top=0 its minimum is the apex's zero and the result collapses to 0
+    // regardless of how thick the waist actually is. Measure the waist against
+    // the profile's widest point directly instead.
+    var secW=polyMinWidth(ngonSection(ext));
+    var th2=Math.min(secW, Y);
     if(hasWaist() && waistInterior() && waistRatio()<1){
-      var e2=profileExtremes();
-      th2=Math.min(th2, (e2[0]/Math.max(1e-6,e2[1]))*m);
+      var wide=Math.max(profileScale(-0.5), profileScale(0.5), waistScale());
+      th2=Math.min(th2, (waistScale()/Math.max(1e-6,wide))*secW);
     }
     return th2;
   }
-  if(S.fam==="branch")   return Math.min(S.ts*X, S.ta*Z, Y);
-  if(S.fam==="stair")    return Math.min(X/S.nstep, Z/S.nstep, Y);
-  if(S.fam==="star")     return Math.min(S.rin*X, S.rin*Z, Y);
-  if(S.fam==="dumbbell") return Math.min(S.neck*m, Y*S.necklen);
+  if(S.fam==="branch")   return Math.min(branchTs()*X, branchTa()*Z, Y);
+  if(S.fam==="stair")    return Math.min(X/stairSteps(), Z/stairSteps(), Y);
+  if(S.fam==="star"){
+    // The core is the right thing to measure only while the section is concave:
+    // there the arms are tips, excluded by the rule above, and the core is the
+    // bridge carrying them. Once rin reaches cos(pi/K) the section turns convex,
+    // with no notches, no arms and so no tips to exclude — measuring the inward
+    // polygon then measures a proxy for a feature that is not there. At
+    // rin = cos(pi/K) exactly the inward vertices become collinear with their
+    // neighbours and cleanPoly drops them, leaving a plain K-gon whose narrowest
+    // width is the whole section's.
+    var K=starPoints(), sec;
+    if(starInner() >= Math.cos(Math.PI/K) - 1e-12) sec=scaleSection(orient(cleanPoly(polyStar())), ext);
+    else sec=starCoreSection(ext);
+    return Math.min(polyMinWidth(sec), Y);
+  }
+  if(S.fam==="dumbbell") return Math.min(neckRatio()*polyMinWidth(ngonSection(ext)), Y*2*neckHalf());
   return Math.min(X,Y,Z);
 }
 function metrics(g){
@@ -785,7 +663,8 @@ function metrics(g){
   var mass = V/1000 * S.dens;            // cm^3 * g/cm^3
   return {a:a,b:b,c:c,x:g.ext[0],y:g.ext[1],z:g.ext[2],V:V,f:f,mass:mass,
           elong:a/b, flat:b/c, maxdim:a,
-          Lmax:g.Lmax, Lset:g.Lset, L:g.L, clamped:g.clamped,
+          Lmax:g.Lmax, Lmin:g.Lmin, Lset:g.Lset, L:g.L,
+          clamped:g.clamped, infeasible:g.infeasible,
           check:g.check, thin:thinnest(g.ext)};
 }
 /* ============ renderer ============ */
@@ -1099,21 +978,69 @@ function sphereHalves(g){
   // lower half is the mirror case, then rotated 180 deg about x to lie cut-side down
   return [part(upper,false,false), part(lower,true,true)];
 }
-function mergeSideBySide(a,b,gap){
-  var verts=a.verts.slice(), faces=a.faces.slice(), i, k;
-  var dx=a.ext[0]/2 + b.ext[0]/2 + gap, base=verts.length;
-  for(i=0;i<b.verts.length;i++) verts.push([b.verts[i][0]+dx, b.verts[i][1], b.verts[i][2]]);
-  for(i=0;i<b.faces.length;i++){
-    var np=[];
-    for(k=0;k<b.faces[i].length;k++) np.push(base+b.faces[i][k]);
-    faces.push(np);
+/* Cut the dumbbell at both neck junctions: two end pieces and the middle rod.
+   Every piece is then a plain prism with flat faces top and bottom, printable
+   with zero overhang and full bed contact. The two end pieces are identical.
+   The trade-off against a single cut at mid-neck is two glue joints instead of
+   one, each with the same contact area (the rod cross-section), so check the
+   thinnest-feature readout before committing to a thin neck. */
+function dumbbellParts(g){
+  var N=g.meta.n, i, k;
+  function band(b){ var out=[]; for(k=0;k<N;k++) out.push(g.faces[2 + b*N + k]); return out; }
+  function capUp(lv){ var c=[]; for(k=0;k<N;k++)   c.push(lv*N+k); return c; }  // material below
+  function capDn(lv){ var c=[]; for(k=N-1;k>=0;k--) c.push(lv*N+k); return c; } // material above
+  var groups=[
+    [g.faces[0]].concat(band(0), [capUp(1)]),   // lower bulge
+    [capDn(2)].concat(band(2), [capUp(3)]),     // middle rod
+    [capDn(4)].concat(band(4), [g.faces[1]])    // upper bulge
+  ];
+  var out=[], gi;
+  for(gi=0;gi<groups.length;gi++){
+    var map={}, verts=[], faces=[], f, j;
+    for(f=0;f<groups[gi].length;f++){
+      var poly=groups[gi][f], np=[];
+      for(j=0;j<poly.length;j++){
+        var v=poly[j];
+        if(map[v]===undefined){ map[v]=verts.length; verts.push(g.verts[v].slice()); }
+        np.push(map[v]);
+      }
+      faces.push(np);
+    }
+    // drop each piece onto a common base plane, so they do not float apart
+    var ylo=1e18;
+    for(j=0;j<verts.length;j++) if(verts[j][1]<ylo) ylo=verts[j][1];
+    for(j=0;j<verts.length;j++) verts[j][1]-=ylo;
+    var lo=[1e18,1e18,1e18], hi=[-1e18,-1e18,-1e18];
+    for(j=0;j<verts.length;j++) for(k=0;k<3;k++){
+      if(verts[j][k]<lo[k]) lo[k]=verts[j][k];
+      if(verts[j][k]>hi[k]) hi[k]=verts[j][k];
+    }
+    out.push({verts:verts, faces:faces, ext:[hi[0]-lo[0],hi[1]-lo[1],hi[2]-lo[2]]});
   }
-  return {verts:verts, faces:faces, ext:[a.ext[0]+dx, Math.max(a.ext[1],b.ext[1]), Math.max(a.ext[2],b.ext[2])]};
+  return out;
+}
+function mergeParts(parts, gap){
+  var verts=parts[0].verts.slice(), faces=parts[0].faces.slice();
+  var ext=parts[0].ext.slice(), cursor=parts[0].ext[0], i, j, k;
+  for(i=1;i<parts.length;i++){
+    var b=parts[i], dx=cursor + gap + b.ext[0]/2 - parts[0].ext[0]/2, base=verts.length;
+    for(j=0;j<b.verts.length;j++) verts.push([b.verts[j][0]+dx, b.verts[j][1], b.verts[j][2]]);
+    for(j=0;j<b.faces.length;j++){
+      var np=[];
+      for(k=0;k<b.faces[j].length;k++) np.push(base+b.faces[j][k]);
+      faces.push(np);
+    }
+    cursor += gap + b.ext[0];
+    ext[1]=Math.max(ext[1], b.ext[1]);
+    ext[2]=Math.max(ext[2], b.ext[2]);
+  }
+  ext[0]=cursor;
+  return {verts:verts, faces:faces, ext:ext};
 }
 function exportGeo(g){
   if(!g.meta) return g;
-  var h=sphereHalves(g);
-  return mergeSideBySide(h[0], h[1], 4);
+  if(g.meta.kind==="dumbbell") return mergeParts(dumbbellParts(g), 4);
+  return mergeParts(sphereHalves(g), 4);
 }
 function stlBuffer(g, name){
   // model Y is the extrusion axis; printers use Z as up, so rotate +90 deg
@@ -1153,14 +1080,23 @@ function stlBuffer(g, name){
   return buf;
 }
 function nf(v,d){ return Number(v).toFixed(d); }
+/* The name has to key the geometry in the file, not the request that produced
+   it. Reading raw state instead lets two rows that differ only in a parameter
+   the name omits, or only below a clamp, resolve to the same name with
+   different bodies: two rows that differ only in a clamped input both wrote
+   frustum_n4_t0.50_m0.02_h0.50_r1.00-1.00-1.00_L30.0 while building different
+   shapes, so writing one file per name silently discarded the other. Reading
+   the effective values closes that: identical names now mean identical
+   geometry, and differing geometry always gets differing names.
+   Note this reads S, not o — the caller sets state before building. */
 function shapeName(o, Lused){
   var s=o.fam;
-  if(o.fam==="frustum")       s+="_n"+o.n+"_t"+nf(o.top,2)+(Math.abs(o.waist-1)>1e-9?"_m"+nf(o.waist,2)+"_h"+nf(o.wpos,2):"");
-  else if(o.fam==="ring")     s+="_n"+o.n+"_q"+nf(o.hole,2)+"_d"+nf(o.depth,2);
-  else if(o.fam==="star")     s+="_k"+o.sk+"_i"+nf(o.rin,2);
-  else if(o.fam==="dumbbell") s+="_n"+o.n+"_c"+nf(o.neck,2)+"_cl"+nf(o.necklen,2);
-  else if(o.fam==="branch")   s+="_ts"+nf(o.ts,2)+"_ta"+nf(o.ta,2)+"_u"+nf(o.u,2)+"_p"+nf(o.p,2);
-  else if(o.fam==="stair")    s+="_s"+o.nstep;
+  if(o.fam==="frustum")       s+="_n"+o.n+"_t"+nf(taper(),2)+(Math.abs(waistRatio()-1)>1e-9?"_m"+nf(waistRatio(),2)+"_h"+nf(waistPos(),2):"");
+  else if(o.fam==="ring")     s+="_n"+o.n+"_q"+nf(boreRatio(),2)+"_d"+nf(boreDepth(),2);
+  else if(o.fam==="star")     s+="_k"+starPoints()+"_i"+nf(starInner(),2);
+  else if(o.fam==="dumbbell") s+="_n"+o.n+"_c"+nf(neckRatio(),2)+"_cl"+nf(2*neckHalf(),2);
+  else if(o.fam==="branch")   s+="_ts"+nf(branchTs(),2)+"_ta"+nf(branchTa(),2)+"_u"+nf(branchU(),2)+"_p"+nf(branchP(),2);
+  else if(o.fam==="stair")    s+="_s"+stairSteps();
   s+="_r"+nf(o.rx,2)+"-"+nf(o.ry,2)+"-"+nf(o.rz,2);
   return s+"_L"+nf(Lused===undefined?o.cube:Lused,1);
 }
@@ -1206,324 +1142,633 @@ function saveSTL(g, name){
   document.body.appendChild(a); a.click();
   setTimeout(function(){ URL.revokeObjectURL(a.href); a.parentNode.removeChild(a); }, 0);
 }
-function buildFrom(r){
-  var sv=snapshot(), i;
-  for(i=0;i<SHAPE_KEYS.length;i++) S[SHAPE_KEYS[i]]=r.P[SHAPE_KEYS[i]];
-  var g=build();
-  for(i=0;i<SHAPE_KEYS.length;i++) S[SHAPE_KEYS[i]]=sv[SHAPE_KEYS[i]];
+
+/* ============ parameter meta ============ */
+var NOPT = [{v:"3",t:"3"},{v:"4",t:"4"},{v:"5",t:"5"},{v:"6",t:"6"},{v:"7",t:"7"},{v:"8",t:"8"},{v:"circle",t:"圓"}];
+var P = {
+  n:       {lab:"截面邊數", type:"chips", opts:NOPT},
+  top:     {lab:"頂面比", hint:"1 是柱、0 是錐", min:0, max:2.5, step:0.01},
+  waist:   {lab:"腰量", hint:">1 外凸、<1 內縮", min:0.05, max:2.5, step:0.01},
+  wpos:    {lab:"腰位置", hint:"0.5 對稱", min:0, max:1, step:0.01},
+  hole:    {lab:"孔徑比", hint:"外徑的幾成", min:0.02, max:0.95, step:0.01},
+  depth:   {lab:"孔深", hint:"1 是貫穿", min:0.02, max:1, step:0.01},
+  sk:      {lab:"尖角數", min:3, max:12, step:1},
+  rin:     {lab:"內徑比", hint:"越小凹越深", min:0.1, max:1, step:0.01},
+  neck:    {lab:"頸縮量", hint:"越小頸越細", min:0.1, max:0.98, step:0.01},
+  necklen: {lab:"頸長", hint:"佔全高比例", min:0.1, max:0.9, step:0.01},
+  ts:      {lab:"柱身粗細", hint:"越大越接近方塊", min:0.05, max:0.9, step:0.01},
+  ta:      {lab:"手臂粗細", hint:"越大越接近方塊", min:0.05, max:0.9, step:0.01},
+  u:       {lab:"柱身位置", hint:"0 貼邊、0.5 置中", min:0, max:0.5, step:0.01},
+  p:       {lab:"手臂位置", hint:"0 貼邊、0.5 置中", min:0, max:0.5, step:0.01},
+  nstep:   {lab:"階數", min:2, max:8, step:1}
+};
+var FAMCTRL = {
+  frustum:  ["n","top","waist","wpos"],
+  ring:     ["n","hole","depth"],
+  star:     ["sk","rin"],
+  dumbbell: ["n","neck","necklen"],
+  branch:   ["ts","ta","u","p"],
+  stair:    ["nstep"],
+  sphere:   []
+};
+
+/* ============ classes ============ */
+function C(id,name,fam,desc,fix,start){
+  return {id:id,name:name,fam:fam,desc:desc,fix:fix||{},start:start||{}};
+}
+var CLASSES = [
+  C("cyl","柱","frustum","等截面直柱。",
+    {top:1,waist:1,wpos:0.5,wfrac:0.15}, {n:"4",c:1,e:1}),
+  C("cone","錐","frustum","頂面收束為一點。",
+    {top:0,waist:1,wpos:0.5,wfrac:0.15}, {n:"4",c:1,e:1}),
+  C("taper","台","frustum","頂面收小但仍是平面。",
+    {waist:1,wpos:0.5,wfrac:0.15}, {n:"4",top:0.5,c:1,e:1}),
+  C("spindle","紡錘","frustum","腰部外凸。",
+    {top:1,wfrac:0.15}, {n:"6",waist:1.6,wpos:0.5,c:1,e:1}),
+  C("hour","沙漏","frustum","腰部內縮。",
+    {top:1,wfrac:0.15}, {n:"6",waist:0.5,wpos:0.5,c:1,e:1}),
+  C("ring","扁環","ring","貫穿孔，靠 e 壓扁才是環。",
+    {depth:1}, {n:"circle",hole:0.55,c:1,e:0.4}),
+  C("star","星柱","star","星形截面。c 一拉開就不像星。sk=3 時 rin 另限 ≤0.4（避開 rin=cos(π/3)=0.5 的塌縮）。",
+    {}, {sk:5,rin:0.5,c:1,e:1}),
+  C("dumb","啞鈴","dumbbell","兩端粗、中間頸縮。",
+    {}, {n:"4",neck:0.4,necklen:0.5,c:1,e:1.6}),
+  C("lshape","L 形","branch","柱身與手臂都貼邊。",
+    {u:0,p:0}, {ts:0.35,ta:0.35,c:1,e:0.3}),
+  C("tshape","T 形","branch","柱身置中、手臂貼邊。",
+    {u:0.5,p:0}, {ts:0.35,ta:0.35,c:1,e:0.3}),
+  C("cross","十字","branch","兩者都置中。",
+    {u:0.5,p:0.5}, {ts:0.35,ta:0.35,c:1,e:0.3}),
+  C("stair","階梯","stair","等踏面階梯。階數 2 等於 L 形。",
+    {}, {nstep:4,c:1,e:0.3}),
+  C("ellip","橢球","sphere","沒有截面特徵，只有三軸比例。",
+    {}, {c:1,e:1})
+];
+
+/* ============ level spec (seeded, all editable) ============ */
+// 連續軸支援任意層數。
+// up(root, r0, r1, ...)        單向:第 i 個區間就是第 i 層
+// bi(root, L0, lo1,hi1, lo2,hi2, ...) 雙向:L0 之後每兩個參數是一層的下側與上側
+function bi(root,L0){
+  var rest=[].slice.call(arguments,2), sides=[], i;
+  for(i=0;i+1<rest.length;i+=2) sides.push([rest[i],rest[i+1]]);
+  return {mode:"bi",root:root,L0:L0,sides:sides};
+}
+function up(root){
+  return {mode:"up",root:root,levels:[].slice.call(arguments,1)};
+}
+function disc(root,L0,L1,L2){ return {mode:"disc",root:root,L0:L0,L1:L1,L2:L2}; }
+
+var LV = {
+  cyl:{ c: up(1,[1,1.2],[1.2,1.4],[1.4,1.7],[1.7,2.2],[2.2,3]), e: bi(1,[0.8,1.3],[0.6,0.8],[1.3,1.9],[0.4,0.6],[1.9,2.9],[0.2,0.4],[2.9,5]),
+    ax:[["n",disc(4,"3,4,5,6,7,8,circle","3,4,5,6,7,8,circle","3,4,5,6,7,8,circle")]] },
+  cone:{ c: up(1,[1,1.2],[1.2,1.4],[1.4,1.7],[1.7,2.2],[2.2,3]), e: bi(1,[0.8,1.3],[0.6,0.8],[1.3,1.9],[0.4,0.6],[1.9,2.9],[0.2,0.4],[2.9,5]),
+    ax:[["n",disc(4,"3,4,5,6,7,8,circle","3,4,5,6,7,8,circle","3,4,5,6,7,8,circle")]] },
+  taper:{ c: up(1,[1,1.4],[1.4,2],[2,3]), e: bi(1,[0.8,1.5],[0.5,0.8],[1.5,3],[0.2,0.5],[3,5]),
+    ax:[["n",disc(4,"3,4,5,6,7,8,circle","3,4,5,6,7,8,circle","3,4,5,6,7,8,circle")],
+        ["top",bi(0.5,[0.4,0.6],[0.3,0.4],[0.6,0.7],[0.2,0.3],[0.7,0.8])]] },
+  spindle:{ c: up(1,[1,1.4],[1.4,2],[2,3]), e: bi(1,[0.8,1.5],[0.5,0.8],[1.5,3],[0.2,0.5],[3,5]),
+    ax:[["n",disc(6,"3,4,6,8,circle","3,4,6,8,circle","3,4,6,8,circle")],
+        ["waist",bi(1.6,[1.6,1.7],[1.4,1.6],[1.7,2],[1.2,1.4],[2,2.5])],
+        ["wpos",up(0.5,[0.5,0.6],[0.6,0.7],[0.7,0.8])]] },
+  hour:{ c: up(1,[1,1.4],[1.4,2],[2,3]), e: bi(1,[0.8,1.5],[0.5,0.8],[1.5,3],[0.2,0.5],[3,5]),
+    ax:[["n",disc(6,"3,4,6,8,circle","3,4,6,8,circle","3,4,6,8,circle")],
+        ["waist",bi(0.5,[0.44,0.57],[0.33,0.44],[0.57,0.68],[0.22,0.33],[0.68,0.78])],
+        ["wpos",up(0.5,[0.5,0.6],[0.6,0.7],[0.7,0.8])]] },
+  ring:{ c: up(1,[1,1.4],[0,0],[0,0]), e: bi(0.4,[0.3,0.5],[0.2,0.3],[0.5,0.6],[0,0],[0,0]),
+    ax:[["n",disc("circle","3,4,6,8,circle","3,4,6,8,circle","3,4,6,8,circle")],
+        ["hole",bi(0.55,[0.5,0.6],[0.4,0.5],[0.6,0.7],[0,0],[0.7,0.85])]] },
+  star:{ c: up(1,[1,1.5],[0,0],[0,0]), e: bi(1,[0.8,1.5],[0.5,0.8],[1.5,3],[0.2,0.5],[3,5]),
+    ax:[["sk",disc(5,"3,4,5,6,8","3,4,5,6,8","3,4,5,6,8")],
+        ["rin",bi(0.5,[0.5,0.6],[0.4,0.5],[0.6,0.65],[0.25,0.4],[0,0])]] },
+  dumb:{ c: up(1,[1,1.4],[1.4,2],[2,3]), e: bi(1.6,[1.4,1.8],[1.2,1.4],[1.8,2.5],[0.9,1.2],[2.5,3]),
+    ax:[["n",disc(4,"3,4,6,8,circle","3,4,6,8,circle","3,4,6,8,circle")],
+        ["neck",bi(0.4,[0.3,0.4],[0,0],[0.4,0.5],[0,0],[0,0])],
+        ["necklen",bi(0.5,[0.4,0.5],[0.3,0.4],[0.5,0.6],[0,0],[0,0])]] },
+  lshape:{ c: up(1,[1,1.4],[1.4,2],[2,3]), e: bi(0.3,[0.3,0.4],[0.2,0.3],[0.4,0.5],[0,0],[0,0]),
+    ax:[["ts",bi(0.35,[0.3,0.4],[0.2,0.3],[0.4,0.5],[0,0],[0,0])],
+        ["ta",bi(0.35,[0.3,0.4],[0.2,0.3],[0.4,0.5],[0,0],[0,0])]] },
+  tshape:{ c: up(1,[1,1.4],[1.4,2],[2,3]), e: bi(0.3,[0.3,0.4],[0.2,0.3],[0.4,0.5],[0,0],[0,0]),
+    ax:[["ts",bi(0.35,[0.3,0.4],[0.2,0.3],[0.4,0.5],[0,0],[0,0])],
+        ["ta",bi(0.35,[0.3,0.4],[0.2,0.3],[0.4,0.5],[0,0],[0,0])]] },
+  cross:{ c: up(1,[1,1.4],[1.4,2],[2,3]), e: bi(0.3,[0.3,0.4],[0.2,0.3],[0.4,0.5],[0,0],[0,0]),
+    ax:[["ts",bi(0.35,[0.3,0.4],[0.2,0.3],[0.4,0.5],[0,0],[0,0])],
+        ["ta",bi(0.35,[0.3,0.4],[0.2,0.3],[0.4,0.5],[0,0],[0,0])]] },
+  stair:{ c: up(1,[1,1.4],[1.4,2],[2,3]), e: bi(0.3,[0.3,0.4],[0.2,0.3],[0.4,0.5],[0,0],[0,0]),
+    ax:[["nstep",disc(4,"3,4,5,6,8","3,4,5,6,8","3,4,5,6,8")]] },
+  ellip:{ c: up(1,[1,1.2],[1.2,1.4],[1.4,1.7],[1.7,2.2],[2.2,3]), e: bi(1,[0.8,1.3],[0.6,0.8],[1.3,1.9],[0.4,0.6],[1.9,2.9],[0.2,0.4],[2.9,5]),
+    ax:[] }
+};
+
+/* ============ ui state ============ */
+var cur = CLASSES[0];
+var cval = 1, eval_ = 1, tab = 1;
+var $ = function(id){ return document.getElementById(id); };
+
+function applyRatios(){ var r=Math.sqrt(cval); S.rx=r; S.rz=1/r; S.ry=eval_; }
+
+function loadClass(cls){
+  cur = cls; S.fam = cls.fam;
+  var k;
+  for(k in cls.fix) if(cls.fix.hasOwnProperty(k)) S[k]=cls.fix[k];
+  for(k in cls.start) if(cls.start.hasOwnProperty(k)){
+    if(k==="c") cval=cls.start.c; else if(k==="e") eval_=cls.start.e; else S[k]=cls.start[k];
+  }
+  applyRatios(); renderAll(); update();
+}
+
+/* ============ rail ============ */
+function renderRail(){
+  var host=$("rail"); host.innerHTML="";
+  for(var i=0;i<CLASSES.length;i++){
+    (function(c){
+      var b=document.createElement("button");
+      b.className="cls";
+      b.setAttribute("aria-current", c.id===cur.id?"true":"false");
+      b.innerHTML='<span>'+c.name+'</span><span class="fam">'+c.fam+'</span>';
+      b.onclick=function(){ loadClass(c); };
+      host.appendChild(b);
+    })(CLASSES[i]);
+  }
+
+}
+
+/* ============ tab 1: live parameters ============ */
+function numInput(val,min,max,step,onch){
+  var i=document.createElement("input");
+  i.type="number"; i.min=min; i.max=max; i.step=step; i.value=val;
+  i.onchange=function(){
+    var v=parseFloat(i.value);
+    if(!isFinite(v)){ i.value=val; return; }        // 非數字：還原
+    v=Math.min(max, Math.max(min, v));              // 超出範圍：夾住
+    i.value=v; val=v; onch(v);
+  };
+  return i;
+}
+function renderParams(){
+  var host=$("body1"); host.innerHTML="";
+  var L=LV[cur.id]||{ax:[]};
+  var keys=[];
+  for(var ki=0;ki<L.ax.length;ki++) keys.push(L.ax[ki][0]);
+  var g=document.createElement("div"); g.className="grp";
+  var lab=document.createElement("div"); lab.className="glab"; lab.textContent="形狀參數";
+  g.appendChild(lab);
+
+  if(keys.length===0){
+    var e0=document.createElement("p"); e0.className="note";
+    e0.textContent="這個類別沒有可調的形狀參數，只有三軸比例。"; g.appendChild(e0);
+  }
+  for(var i=0;i<keys.length;i++){
+    (function(k){
+      var m=P[k];
+      var wrap=document.createElement("div"); wrap.className="sl";
+      var head=document.createElement("div"); head.className="slrow";
+      var nm=document.createElement("span"); nm.className="n";
+      nm.innerHTML=m.lab+' <em>'+k+'</em>'+(m.hint?' <em>· '+m.hint+'</em>':'');
+      head.appendChild(nm);
+      wrap.appendChild(head);
+
+      if(m.type==="chips"){
+        var box=document.createElement("div"); box.className="chips";
+        for(var j=0;j<m.opts.length;j++){
+          (function(o){
+            var b=document.createElement("button"); b.textContent=o.t;
+            b.setAttribute("aria-pressed", String(S[k])===o.v?"true":"false");
+            b.onclick=function(){ S[k]=o.v; renderParams(); update(); };
+            box.appendChild(b);
+          })(m.opts[j]);
+        }
+        wrap.appendChild(box);
+      } else {
+        var row=document.createElement("div"); row.className="slrow";
+        var sld=document.createElement("input");
+        sld.type="range"; sld.min=m.min; sld.max=m.max; sld.step=m.step; sld.value=S[k];
+        var num=numInput(S[k],m.min,m.max,m.step,function(v){
+          S[k]=v; sld.value=v; update();
+        });
+        sld.oninput=function(){ S[k]=parseFloat(sld.value); num.value=sld.value; update(); };
+        row.appendChild(sld); row.appendChild(num);
+        wrap.appendChild(row);
+      }
+      g.appendChild(wrap);
+    })(keys[i]);
+  }
+  host.appendChild(g);
+
+  var fk=[]; for(var fkey in cur.fix) if(cur.fix.hasOwnProperty(fkey) && fkey!=="wfrac") fk.push(fkey);
+  if(fk.length){
+    var gf=document.createElement("div"); gf.className="grp";
+    gf.innerHTML='<div class="glab">此類別固定</div>';
+    var tb=document.createElement("div"); tb.className="tot";
+    var parts=[];
+    for(var fi2=0;fi2<fk.length;fi2++){
+      var fkk=fk[fi2];
+      parts.push((P[fkk]?P[fkk].lab:fkk)+" <b>"+fkk+" = "+cur.fix[fkk]+"</b>");
+    }
+    tb.innerHTML=parts.join("　·　");
+    gf.appendChild(tb);
+    host.appendChild(gf);
+  }
+
+  var g2=document.createElement("div"); g2.className="grp";
+  g2.innerHTML='<div class="glab">三軸比例</div>';
+  function ratioRow(labText,hintText,val,min,max,setter){
+    var wrap=document.createElement("div"); wrap.className="sl";
+    var head=document.createElement("div"); head.className="slrow";
+    head.innerHTML='<span class="n">'+labText+' <em>'+hintText+'</em></span>';
+    var row=document.createElement("div"); row.className="slrow";
+    var sld=document.createElement("input");
+    sld.type="range"; sld.min=min; sld.max=max; sld.step=0.01; sld.value=val;
+    var num=numInput(val,min,max,0.01,function(v){ sld.value=v; setter(v); });
+    sld.oninput=function(){ num.value=sld.value; setter(parseFloat(sld.value)); };
+    row.appendChild(sld); row.appendChild(num);
+    wrap.appendChild(head); wrap.appendChild(row);
+    return wrap;
+  }
+  g2.appendChild(ratioRow("截面各向異性 (c)","c = rx / rz",cval,1,3,
+    function(v){ cval=v; applyRatios(); update(); }));
+  g2.appendChild(ratioRow("擠出比 (e)","e = ry / √(rx·rz)",eval_,0.1,5,
+    function(v){ eval_=v; applyRatios(); update(); }));
+  var nt=document.createElement("p"); nt.className="note";
+  nt.textContent="c 扭曲截面本身，星柱與分支的辨識點就在截面上。e 只改變擠出長度，截面不變。";
+  g2.appendChild(nt);
+  host.appendChild(g2);
+
+  var g3=document.createElement("div"); g3.className="grp";
+  g3.innerHTML='<div class="glab">列印保護與尺寸</div>';
+
+  if(cur.fam==="frustum"){
+    var wrapW=document.createElement("div"); wrapW.className="sl";
+    var headW=document.createElement("div"); headW.className="slrow";
+    headW.innerHTML='<span class="n">腰下限係數 <em>wfrac</em> <em>· 列印保護，非形狀軸</em></span>';
+    var rowW=document.createElement("div"); rowW.className="slrow";
+    var sldW=document.createElement("input");
+    sldW.type="range"; sldW.min=0.02; sldW.max=1; sldW.step=0.01; sldW.value=S.wfrac;
+    var numW=numInput(S.wfrac,0.02,1,0.01,function(v){ S.wfrac=v; sldW.value=v; update(); });
+    sldW.oninput=function(){ S.wfrac=parseFloat(sldW.value); numW.value=sldW.value; update(); };
+    rowW.appendChild(sldW); rowW.appendChild(numW);
+    wrapW.appendChild(headW); wrapW.appendChild(rowW); g3.appendChild(wrapW);
+    var ntW=document.createElement("p"); ntW.className="note";
+    ntW.textContent="腰的下限 = wfrac × ref / lin。top = 1 時 ref 與 lin 都是 1，"+
+      "所以下限就等於 wfrac。設定的 waist 低於下限會被無聲拉回，讀數的「腰實際採用」會顯示真正生效的值。";
+    g3.appendChild(ntW);
+  }
+
+  var wrapL=document.createElement("div"); wrapL.className="sl";
+  var headL=document.createElement("div"); headL.className="slrow";
+  headL.innerHTML='<span class="n">L <em>cube</em> <em>· 等體積立方體邊長，mm</em></span>';
+  var rowL=document.createElement("div"); rowL.className="slrow";
+  var sldL=document.createElement("input");
+  sldL.type="range"; sldL.min=5; sldL.max=60; sldL.step=0.5; sldL.value=S.cube;
+  var numL=numInput(S.cube,5,60,0.5,function(v){ S.cube=v; sldL.value=v; update(); });
+  sldL.oninput=function(){ S.cube=parseFloat(sldL.value); numL.value=sldL.value; update(); };
+  rowL.appendChild(sldL); rowL.appendChild(numL);
+  wrapL.appendChild(headL); wrapL.appendChild(rowL); g3.appendChild(wrapL);
+  var ntL=document.createElement("p"); ntL.className="note";
+  ntL.textContent="這是要求的 L，會照原值使用、不自動夾回。可印範圍僅供對照：下限來自最薄特徵 "+
+    S.minfeat+" mm，上限來自容器內徑 "+S.container+" mm。下限超過上限就印不出來。"+
+    "L 不進地圖（點雲正規化為最長邊 1），只在列印時有意義。";
+  g3.appendChild(ntL);
+  host.appendChild(g3);
+
+  var acts=document.createElement("div"); acts.className="acts";
+  var b1=document.createElement("button"); b1.className="prim";
+  b1.textContent="把目前的值寫進 root";
+  b1.onclick=function(){ writeRoots(); };
+  var b2=document.createElement("button"); b2.textContent="回到起始值";
+  b2.onclick=function(){ S.cube=15; loadClass(cur); };
+  acts.appendChild(b1); acts.appendChild(b2);
+  host.appendChild(acts);
+
+  var acts2=document.createElement("div"); acts2.className="acts";
+  var b3=document.createElement("button"); b3.textContent="下載 STL";
+  b3.onclick=function(){
+    if(!geo){ toast("還沒有幾何"); return; }
+    if(met && met.infeasible){ toast("這個組合印不出來，仍照樣匯出"); }
+    try{ saveSTL(exportGeo(geo), shapeName(S, met?met.L:S.cube)); }
+    catch(err){ toast("匯出失敗："+err.message); }
+  };
+  var b4=document.createElement("button"); b4.textContent="複製這顆的參數";
+  b4.onclick=function(){
+    var keys=FAMCTRL[cur.fam]||[], o={cls:cur.id, fam:cur.fam}, i;
+    for(i=0;i<keys.length;i++) o[keys[i]]=S[keys[i]];
+    o.c=cval; o.e=eval_;
+    o.rx=+S.rx.toFixed(4); o.ry=+S.ry.toFixed(4); o.rz=+S.rz.toFixed(4);
+    o.L_set=S.cube;
+    if(met){ o.L=+met.L.toFixed(2); o.L_min=isFinite(met.Lmin)?+met.Lmin.toFixed(2):null;
+             o.L_max=+met.Lmax.toFixed(2); o.thin=+met.thin.toFixed(3);
+             o.ext=[+met.x.toFixed(2),+met.y.toFixed(2),+met.z.toFixed(2)];
+             o.infeasible=!!met.infeasible; }
+    copy(JSON.stringify(o), "參數已複製");
+  };
+  acts2.appendChild(b3); acts2.appendChild(b4);
+  host.appendChild(acts2);
+}
+
+function writeRoots(){
+  var L=LV[cur.id]; if(!L) return;
+  L.e.root = eval_;
+  for(var i=0;i<L.ax.length;i++){
+    var k=L.ax[i][0], sp=L.ax[i][1];
+    sp.root = S[k];
+  }
+  renderLevels();
+  toast("root 已更新，區間請自行調整");
+}
+
+/* ============ tab 2: level editor ============ */
+function rngInputs(arr, onch){
+  var box=document.createElement("div"); box.className="single";
+  var a=document.createElement("input"); a.type="text"; a.className="lv"; a.value=arr[0];
+  var d=document.createElement("span"); d.className="dash"; d.textContent="–";
+  var b=document.createElement("input"); b.type="text"; b.className="lv"; b.value=arr[1];
+  var tag=document.createElement("span"); tag.className="offtag"; tag.textContent="停用";
+  function mark(){ var off=!((arr[1]-arr[0])>1e-9);
+    box.className = off ? "single off" : "single"; tag.style.display = off ? "" : "none"; }
+  function push(){ var x=parseFloat(a.value), y=parseFloat(b.value);
+    if(!isNaN(x)) arr[0]=x; if(!isNaN(y)) arr[1]=y; mark(); if(onch) onch(); }
+  a.onchange=push; b.onchange=push;
+  box.appendChild(a); box.appendChild(d); box.appendChild(b); box.appendChild(tag);
+  mark();
+  return box;
+}
+function textInput(getv,setv,onch){
+  var i=document.createElement("input"); i.type="text"; i.className="lv"; i.value=getv();
+  i.onchange=function(){ setv(i.value); if(onch) onch(); };
+  return i;
+}
+function axBlock(name, key, sp, onch){
+  var wrap=document.createElement("div"); wrap.className="ax";
+  var hd=document.createElement("div"); hd.className="axhd";
+  var modeTxt = sp.mode==="disc" ? "離散" : (sp.mode==="bi" ? "連續 雙向" : "連續 單向");
+  hd.innerHTML='<span class="nm">'+name+'</span>'+
+               '<span class="rt">root '+sp.root+'</span>'+
+               '<span class="ty">'+(key?key+" · ":"")+modeTxt+'</span>';
+  wrap.appendChild(hd);
+  var bd=document.createElement("div"); bd.className="axbd";
+
+  function row(tag, content){
+    var r=document.createElement("div"); r.className="lvrow";
+    var t=document.createElement("div"); t.className="lvtag"; t.textContent=tag;
+    r.appendChild(t); r.appendChild(content); bd.appendChild(r);
+  }
+  function pairRow(loArr, hiArr){
+    var box=document.createElement("div");
+    var p1=document.createElement("div"); p1.className="pair";
+    var s1=document.createElement("span"); s1.className="side"; s1.textContent="下側";
+    p1.appendChild(s1); p1.appendChild(rngInputs(loArr,onch));
+    var s2=document.createElement("span"); s2.className="side"; s2.textContent="上側";
+    p1.appendChild(s2); p1.appendChild(rngInputs(hiArr,onch));
+    box.appendChild(p1);
+    return box;
+  }
+
+  if(sp.mode==="disc"){
+    row("L0", textInput(function(){return sp.L0;}, function(v){sp.L0=v;}, onch));
+    row("L1", textInput(function(){return sp.L1;}, function(v){sp.L1=v;}, onch));
+    row("L2", textInput(function(){return sp.L2;}, function(v){sp.L2=v;}, onch));
+    var n=document.createElement("p"); n.className="note";
+    n.textContent="逗號分隔，circle 代表圓形截面。離散軸不隨層級增減，三層填一樣的內容即可；格數取三層的聯集，不會重複計算。";
+    bd.appendChild(n);
+  } else if(sp.mode==="bi"){
+    row("L0", rngInputs(sp.L0,onch));
+    sp.sides.forEach(function(p,i){ row("L"+(i+1), pairRow(p[0], p[1])); });
+  } else {
+    sp.levels.forEach(function(r,i){ row("L"+i, rngInputs(r,onch)); });
+  }
+  wrap.appendChild(bd);
+  return wrap;
+}
+
+function liveRange(a){ return (a && a.length===2 && (a[1]-a[0])>1e-9) ? 1 : 0; }
+function levelCount(sp){
+  if(sp.mode==="disc"){
+    var seen={}, n=0;
+    [sp.L0,sp.L1,sp.L2].forEach(function(v){
+      String(v).split(",").forEach(function(t){
+        t=t.trim(); if(t!=="" && !seen[t]){ seen[t]=1; n++; }
+      });
+    });
+    return n;   // 離散軸不隨層級增減，取三層的聯集
+  }
+  if(sp.mode==="bi"){
+    var n=liveRange(sp.L0);
+    sp.sides.forEach(function(p){ n+=liveRange(p[0])+liveRange(p[1]); });
+    return n;
+  }
+  var m=0; sp.levels.forEach(function(r){ m+=liveRange(r); }); return m;
+}
+
+function renderLevels(){
+  var host=$("body2"); host.innerHTML="";
+
+  var L=LV[cur.id]; if(!L) return;
+  var onch=function(){ renderTotals(); };
+
+  var gc=document.createElement("div"); gc.className="grp";
+  gc.innerHTML='<div class="glab">c 截面各向異性</div>';
+  gc.appendChild(axBlock("c = rx / rz","c",L.c,onch));
+  var cn=document.createElement("p"); cn.className="note";
+  cn.textContent="root 恆為 1（截面不拉歪），只能往上，所以是單向三層。某一層不想用就把它的兩個數字設成一樣，那一層就不計入格數。";
+  gc.appendChild(cn);
+  host.appendChild(gc);
+
+  var ge=document.createElement("div"); ge.className="grp";
+  ge.innerHTML='<div class="glab">e 擠出比</div>';
+  ge.appendChild(axBlock("e = ry / √(rx·rz)","",L.e,onch));
+  host.appendChild(ge);
+
+  if(L.ax.length){
+    var gs=document.createElement("div"); gs.className="grp";
+    gs.innerHTML='<div class="glab">形狀軸</div>';
+    for(var i=0;i<L.ax.length;i++){
+      var k=L.ax[i][0];
+      gs.appendChild(axBlock(P[k]?P[k].lab:k, k, L.ax[i][1], onch));
+    }
+    host.appendChild(gs);
+  }
+
+  var tot=document.createElement("div"); tot.className="tot"; tot.id="tot";
+  host.appendChild(tot);
+  renderTotals();
+
+  var acts=document.createElement("div"); acts.className="acts";
+  var b1=document.createElement("button"); b1.className="prim"; b1.textContent="複製全部層級 JSON";
+  b1.onclick=exportJson;
+  var b2=document.createElement("button"); b2.textContent="複製全部層級表格";
+  b2.onclick=exportMd;
+  acts.appendChild(b1); acts.appendChild(b2);
+  host.appendChild(acts);
+}
+
+function classGrid(id){
+  var L=LV[id]; if(!L) return 0;
+  var g = levelCount(L.c) * levelCount(L.e);
+  for(var i=0;i<L.ax.length;i++) g *= levelCount(L.ax[i][1]);
   return g;
 }
-document.getElementById("stl").addEventListener("click",function(){
-  saveSTL(exportGeo(geo), shapeName(S, met.L));
-});
-document.getElementById("zip").addEventListener("click",function(){
-  if(!rows.length){ return; }
-  var files=[], seen={}, i;
-  for(i=0;i<rows.length;i++){
-    var r=rows[i], nm=r.name;
-    if(seen[nm]){ nm = nm+"_"+(++seen[r.name]); } else { seen[r.name]=1; }
-    files.push({name:nm+".stl", data:new Uint8Array(stlBuffer(exportGeo(buildFrom(r)), nm))});
+function renderTotals(){
+  var el=$("tot"); if(!el) return;
+  var mine=classGrid(cur.id), all=0;
+  for(var i=0;i<CLASSES.length;i++) all += classGrid(CLASSES[i].id);
+  var per=[1,2,3,5], t=[];
+  for(var j=0;j<per.length;j++) t.push("每格 "+per[j]+" 顆 → "+(all*per[j]));
+  var need=(all>0)?(8000/all):0;
+  el.innerHTML="這個類別 <b>"+mine+"</b> 格　／　十三類別合計 <b>"+all+"</b> 格<br>"+
+    t.join("　·　")+"<br>總數要壓在 8000 顆，每格只能放 <b>"+need.toFixed(1)+"</b> 顆";
+}
+
+/* ============ export ============ */
+function spOut(sp){
+  if(sp.mode==="disc") return {mode:"disc",root:sp.root,L0:sp.L0,L1:sp.L1,L2:sp.L2};
+  if(sp.mode==="bi"){
+    var o={mode:"bi",root:sp.root,L0:sp.L0};
+    sp.sides.forEach(function(p,i){ o["L"+(i+1)]={lo:p[0],hi:p[1]}; });
+    o.n_levels=1+sp.sides.length;
+    return o;
   }
-  files.push({name:"parameters.csv", data:new TextEncoder().encode(csvText())});
-  var a=document.createElement("a");
-  a.href=URL.createObjectURL(zipBuffer(files)); a.download="shape_set.zip";
-  document.body.appendChild(a); a.click();
-  setTimeout(function(){ URL.revokeObjectURL(a.href); a.parentNode.removeChild(a); },0);
-});
+  var u={mode:"up",root:sp.root};
+  sp.levels.forEach(function(r,i){ u["L"+i]=r; });
+  u.n_levels=sp.levels.length;
+  return u;
+}
+function exportJson(){
+  var o={classes:{}};
+  for(var i=0;i<CLASSES.length;i++){
+    var c=CLASSES[i], L=LV[c.id];
+    var ax={};
+    for(var j=0;j<L.ax.length;j++) ax[L.ax[j][0]]=spOut(L.ax[j][1]);
+    o.classes[c.id]={name:c.name,fam:c.fam,fix:c.fix,
+      c:spOut(L.c),e:spOut(L.e),axes:ax,grid:classGrid(c.id)};
+  }
+  var tot=0; for(i=0;i<CLASSES.length;i++) tot+=classGrid(CLASSES[i].id);
+  o.total_grid=tot;
+  copy(JSON.stringify(o,null,2),"層級 JSON 已複製");
+}
+function rngTxt(a){ return liveRange(a) ? (a[0]+" – "+a[1]) : "—"; }
+function nLevels(sp){
+  if(sp.mode==="disc") return 3;
+  if(sp.mode==="bi") return 1+sp.sides.length;
+  return sp.levels.length;
+}
+function lvTxt(sp,i){
+  if(sp.mode==="disc") return i<3 ? sp[["L0","L1","L2"][i]] : "";
+  if(sp.mode==="bi"){
+    if(i===0) return rngTxt(sp.L0);
+    var p=sp.sides[i-1]; if(!p) return "";
+    var lo=rngTxt(p[0]), hi=rngTxt(p[1]);
+    if(lo==="—" && hi==="—") return "—";
+    if(lo==="—") return hi;
+    if(hi==="—") return lo;
+    return lo+" ／ "+hi;
+  }
+  var r=sp.levels[i]; return r ? rngTxt(r) : "";
+}
+function exportMd(){
+  var i,j,r,c,L,rows,maxL=0;
+  for(i=0;i<CLASSES.length;i++){
+    L=LV[CLASSES[i].id];
+    maxL=Math.max(maxL, nLevels(L.c), nLevels(L.e));
+    for(j=0;j<L.ax.length;j++) maxL=Math.max(maxL, nLevels(L.ax[j][1]));
+  }
+  var head="| 類別 | fam | 軸 | root", sep="| --- | --- | --- | ---";
+  for(i=0;i<maxL;i++){ head+=" | L"+i; sep+=" | ---"; }
+  var out=[head+" | 格數 |", sep+" | --- |"];
+  for(i=0;i<CLASSES.length;i++){
+    c=CLASSES[i]; L=LV[c.id];
+    rows=[["c (c)",L.c],["e (e)",L.e]];
+    for(j=0;j<L.ax.length;j++) rows.push([(P[L.ax[j][0]]?P[L.ax[j][0]].lab:L.ax[j][0])+" ("+L.ax[j][0]+")", L.ax[j][1]]);
+    for(r=0;r<rows.length;r++){
+      var line="| "+(r===0?c.name:"")+" | "+(r===0?c.fam:"")+" | "+rows[r][0]+" | "+rows[r][1].root;
+      for(j=0;j<maxL;j++) line+=" | "+(lvTxt(rows[r][1],j)||"");
+      line+=" | "+(r===0?classGrid(c.id):"")+" |";
+      out.push(line);
+    }
+  }
+  var tot=0; for(i=0;i<CLASSES.length;i++) tot+=classGrid(CLASSES[i].id);
+  out.push(""); out.push("合計 "+tot+" 格。");
+  copy(out.join("\n"),"層級表格已複製");
+}
+
 /* ============ readout ============ */
-var readout=document.getElementById("readout"), warnEl=document.getElementById("warn");
-function fmt(x,n){ return x.toFixed(n===undefined?1:n); }
-function renderReadout(){
-  var m=met;
-  var cells=[
-    ["L 實際",      fmt(m.L,1),      "mm", ""],
-    ["L 上限",      fmt(m.Lmax,1),   "mm", m.clamped?"axis-a":""],
-    ["最長邊",      fmt(m.maxdim,1), "mm", ""],
-    ["容器",        fmt(S.container,0), "mm", ""],
-    ["X",           fmt(m.x,1),      "mm", "axis-a"],
-    ["Y",           fmt(m.y,1),      "mm", "axis-a"],
-    ["Z",           fmt(m.z,1),      "mm", "axis-a"],
-    ["伸長比 a/b",  fmt(m.elong,2),  "",   ""],
-    ["扁平比 b/c",  fmt(m.flat,2),   "",   ""],
-    ["體積",        fmt(m.V/1000,3), "cm³",""],
-    ["填充率 f",    fmt(m.f,3),      "",   ""],
-    ["最薄特徵",    fmt(m.thin,2),   "mm", ""],
-    ["理論質量",    fmt(m.mass,2),   "g",  ""],
-    ["體積校驗",    (m.check===null?"—":fmt(m.check,4)), "", ""]
-  ];
-  var html="";
-  for(var i=0;i<cells.length;i++){
-    html += '<div class="cell '+cells[i][3]+'"><span class="k">'+cells[i][0]+'</span>'+
-            '<span class="v">'+cells[i][1]+(cells[i][2]?'<small>'+cells[i][2]+'</small>':'')+'</span></div>';
-  }
-  readout.innerHTML=html;
-
-  var msgs=[];
-  if(m.clamped){
-    msgs.push("L 已由設定的 "+fmt(m.Lset,1)+" mm 壓到 "+fmt(m.L,1)+
-              " mm,否則最長邊會超過容器內徑 "+fmt(S.container,0)+" mm。此形狀在該容器下的體積上限即為此值。");
-  }
-  if(m.thin < S.minfeat){
-    msgs.push("最薄特徵 "+fmt(m.thin,2)+" mm 低於門檻 "+fmt(S.minfeat,2)+
-              " mm,列印後可能脆弱,搖晃撞擊時有損壞風險。");
-  }
-  if(m.check!==null && Math.abs(m.check-1)>0.005){
-    msgs.push("體積校驗偏離 1 達 "+fmt((m.check-1)*100,2)+" %,網格可能未封閉或有內部面,匯出前應檢查。");
-  }
-  if(msgs.length){ warnEl.hidden=false; warnEl.innerHTML=msgs.join("<br><br>"); }
-  else { warnEl.hidden=true; warnEl.innerHTML=""; }
+function cellHtml(k,v,cls){
+  return '<div class="cell"><div class="k">'+k+'</div><div class="v'+(cls?" "+cls:"")+'">'+v+'</div></div>';
 }
-
-/* ============ update ============ */
-var GROUPS={
-  ngroup:   ["frustum","ring","dumbbell"],
-  tgroup:   ["frustum"],
-  hgroup:   ["ring"],
-  stargroup:["star"],
-  dbgroup:  ["dumbbell"],
-  brgroup:  ["branch"],
-  stgroup:  ["stair"]
-};
 function update(){
-  for(var id in GROUPS){
-    if(!GROUPS.hasOwnProperty(id)) continue;
-    var on = GROUPS[id].indexOf(S.fam) >= 0;
-    document.getElementById(id).style.display = on ? "" : "none";
-  }
   geo=build(); met=metrics(geo);
-  renderReadout();
-}
-
-/* One registry for every control, so a reset can restore any subset of the
-   state and put the matching widget back in step without duplicated tables. */
-var CONTROLS={
-  fam:      {t:"chips",  el:"fam"},
-  n:        {t:"chips",  el:"ngon"},
-  sk:       {t:"chips",  el:"sk"},
-  nstep:    {t:"chips",  el:"nstep"},
-  top:      {t:"slider", el:"top",     out:"topV",     d:2, s:""},
-  waist:    {t:"slider", el:"waist",   out:"waistV",   d:2, s:""},
-  wpos:     {t:"slider", el:"wpos",    out:"wposV",    d:2, s:""},
-  hole:     {t:"slider", el:"hole",    out:"holeV",    d:2, s:""},
-  depth:    {t:"slider", el:"depth",   out:"depthV",   d:2, s:""},
-  rin:      {t:"slider", el:"rin",     out:"rinV",     d:2, s:""},
-  neck:     {t:"slider", el:"neck",    out:"neckV",    d:2, s:""},
-  necklen:  {t:"slider", el:"necklen", out:"necklenV", d:2, s:""},
-  ts:       {t:"slider", el:"ts",      out:"tsV",      d:2, s:""},
-  ta:       {t:"slider", el:"ta",      out:"taV",      d:2, s:""},
-  u:        {t:"slider", el:"u",       out:"uV",       d:2, s:""},
-  p:        {t:"slider", el:"p",       out:"pV",       d:2, s:""},
-  rx:       {t:"slider", el:"rx",      out:"rxV",      d:2, s:""},
-  ry:       {t:"slider", el:"ry",      out:"ryV",      d:2, s:""},
-  rz:       {t:"slider", el:"rz",      out:"rzV",      d:2, s:""},
-  cube:     {t:"number", el:"cube"},
-  container:{t:"number", el:"container"},
-  minfeat:  {t:"number", el:"minfeat"},
-  dens:     {t:"number", el:"dens"}
-};
-function segSet(container, val){
-  var bs=container.querySelectorAll("button");
-  for(var i=0;i<bs.length;i++) bs[i].setAttribute("aria-pressed", bs[i].dataset.v===String(val) ? "true":"false");
-}
-function syncControl(key){
-  var c=CONTROLS[key]; if(!c) return;
-  if(c.t==="slider"){
-    document.getElementById(c.el).value=S[key];
-    document.getElementById(c.out).textContent=Number(S[key]).toFixed(c.d)+c.s;
-  } else if(c.t==="chips"){
-    segSet(document.getElementById(c.el), S[key]);
-  } else {
-    document.getElementById(c.el).value=S[key];
-  }
-}
-var famNote={
-  frustum:"\u9310\u53f0:\u622a\u9762\u6cbf\u64e0\u51fa\u8ef8\u7e2e\u653e\u3002\u8170\u6bd4 1 \u6642\u8f2a\u5ed3\u662f\u55ae\u4e00\u76f4\u7dda,\u5373\u55ae\u6bb5\u9310\u53f0;\u8170\u6bd4\u5c0f\u65bc 1 \u6298\u51fa\u8170,\u6210\u70ba\u5169\u6bb5\u9310\u5c16\u7aef\u76f8\u62b5,\u5927\u65bc 1 \u5247\u5169\u6bb5\u9310\u5e95\u9762\u76f8\u62b5\u3002",
-  sphere:"\u7403\u9ad4:\u4e09\u8ef8\u7686\u76f8\u7b49\u6642\u70ba\u6b63\u7403,\u4e09\u8ef8\u4e0d\u7b49\u5373\u70ba\u6a62\u7403\u3002\u532f\u51fa STL \u6642\u81ea\u52d5\u6cbf\u8d64\u9053\u5207\u534a\u4e26\u6392,\u5217\u5370\u5f8c\u9ecf\u5408\u3002",
-  ring:"\u74b0\uff0f\u676f:\u76f4\u58c1,\u4e2d\u592e\u4f9d\u5167\u5f91\u6bd4\u938f\u7a7a\u3002\u5b54\u5f9e\u9802\u9762\u5f80\u4e0b\u958b,\u5b54\u6df1 1 \u70ba\u8cab\u7a7f\u74b0\u9ad4,\u5c0f\u65bc 1 \u5247\u5e95\u90e8\u7559\u4e00\u5c64\u5be6\u5fc3,\u5373\u70ba\u676f\u3002",
-  star:"\u661f\u5f62\u67f1:\u622a\u9762\u70ba 2k \u500b\u9802\u9ede\u4ea4\u66ff\u5167\u5916\u7684\u661f\u5f62\u3002\u5167\u7e2e\u6bd4 1 \u6642\u9000\u5316\u70ba\u6b63 2k \u908a\u5f62,\u5c0f\u65bc 1 \u5f15\u5165\u975e\u51f8\u5e7e\u4f55\u3002",
-  dumbbell:"\u555e\u9234:\u5169\u7aef\u622a\u9762\u70ba\u5b8c\u6574\u591a\u908a\u5f62,\u4e2d\u6bb5\u6536\u7a84\u70ba\u9838\u90e8\u3002\u9838\u90e8\u6bd4 1 \u6642\u9000\u5316\u70ba\u7b49\u622a\u9762\u76f4\u67f1\u3002",
-  branch:"\u5206\u652f:\u4e3b\u5e79\u8207\u6a6b\u81c2\u7684\u806f\u96c6\u3002(u,p) \u56db\u89d2\u4f9d\u5e8f\u70ba L\u3001T\u3001\u22a2\u3001\u5341\u5b57,\u4e2d\u9593\u9023\u7e8c\u8b8a\u5316\u3002",
-  stair:"\u968e\u68af:\u7b49\u5bec\u7b49\u9ad8\u7684\u55ae\u8abf\u968e\u68af\u3002\u968e\u6578 2 \u5373\u70ba\u5206\u652f\u65cf\u7684 L \u5f62,\u5169\u65cf\u5728\u6b64\u63a5\u58e4\u3002"
-};
-var DEFAULTS={fam:"frustum", n:4, top:1, waist:1, wpos:0.5, hole:0.5, depth:1,
-  sk:5, rin:0.5, neck:0.5, necklen:0.4, ts:0.35, ta:0.35, u:0, p:0, nstep:3,
-  rx:1, ry:1, rz:1, cube:15, container:80, minfeat:2.5,
-  dens:1.25, mat:"PETG Basic"};
-// which keys each group's 預設 button restores
-var RESET_GROUPS={
-  base:    ["container","cube","minfeat"],
-  fam:     ["fam"],
-  ngon:    ["n"],
-  taper:   ["top","waist","wpos"],
-  hollow:  ["hole","depth"],
-  star:    ["sk","rin"],
-  dumbbell:["neck","necklen"],
-  branch:  ["ts","ta","u","p"],
-  stair:   ["nstep"],
-  ratio:   ["rx","ry","rz"],
-  mat:     ["dens"],
-  all:     null                       // null means every key in DEFAULTS
-};
-function resetKeys(keys){
-  var i, k;
-  if(!keys){ keys=[]; for(k in DEFAULTS) if(DEFAULTS.hasOwnProperty(k)) keys.push(k); }
-  for(i=0;i<keys.length;i++){
-    k=keys[i];
-    S[k]=DEFAULTS[k];
-    syncControl(k);
-    if(k==="fam") document.getElementById("famNote").textContent=famNote[S.fam];
-    if(k==="dens"){ S.mat=DEFAULTS.mat; segSet(document.getElementById("mat"), String(DEFAULTS.dens)); }
-  }
-  update();
-}
-document.getElementById("panel").addEventListener("click",function(e){
-  var b=e.target.closest(".gdef"); if(!b) return;
-  resetKeys(RESET_GROUPS[b.dataset.reset]);
-});
-document.getElementById("reset").addEventListener("click",function(){ resetKeys(null); });
-
-/* ============ wiring ============ */
-document.getElementById("fam").addEventListener("click",function(e){
-  var b=e.target.closest("button"); if(!b) return;
-  S.fam=b.dataset.v; segSet(this,S.fam);
-  document.getElementById("famNote").textContent=famNote[S.fam];
-  update();
-});
-function bindChips(id, key, asInt){
-  document.getElementById(id).addEventListener("click",function(e){
-    var b=e.target.closest("button"); if(!b) return;
-    S[key]= asInt ? parseInt(b.dataset.v,10) : b.dataset.v;
-    segSet(this, b.dataset.v); update();
-  });
-}
-bindChips("ngon","n",false);
-bindChips("sk","sk",true);
-bindChips("nstep","nstep",true);
-
-function bindSlider(key){
-  var c=CONTROLS[key], el=document.getElementById(c.el), out=document.getElementById(c.out);
-  el.addEventListener("input",function(){
-    S[key]=parseFloat(el.value);
-    out.textContent=S[key].toFixed(c.d)+c.s;
-    update();
-  });
-}
-["top","waist","wpos","hole","depth","rin","neck","necklen",
- "ts","ta","u","p","rx","ry","rz"].forEach(bindSlider);
-
-function bindNumber(key, min){
-  document.getElementById(CONTROLS[key].el).addEventListener("input",function(){
-    var v=parseFloat(this.value); if(!isFinite(v)||v<min) return;
-    S[key]=v; update();
-  });
-}
-bindNumber("cube",0.1); bindNumber("container",5); bindNumber("minfeat",0.05);
-
-document.getElementById("showcont").addEventListener("click",function(e){
-  var b=e.target.closest("button"); if(!b) return;
-  showCont=!showCont;
-  b.setAttribute("aria-pressed", showCont?"true":"false");
-  b.textContent = showCont ? "\u5728\u8996\u5716\u4e2d\u986f\u793a\u5bb9\u5668" : "\u5df2\u96b1\u85cf\u5bb9\u5668";
-});
-document.getElementById("mat").addEventListener("click",function(e){
-  var b=e.target.closest("button"); if(!b) return;
-  S.dens=parseFloat(b.dataset.v); S.mat=b.dataset.n;
-  segSet(this,b.dataset.v);
-  document.getElementById("dens").value=S.dens;
-  update();
-});
-document.getElementById("dens").addEventListener("input",function(){
-  var v=parseFloat(this.value); if(!isFinite(v)||v<=0) return;
-  S.dens=v; S.mat="\u81ea\u8a02";
-  segSet(document.getElementById("mat"), "");
-  update();
-});
-
-/* ============ list ============ */
-var listBody=document.getElementById("listBody"), countEl=document.getElementById("count");
-var famLabels={frustum:"錐台",sphere:"球",ring:"環杯",star:"星",dumbbell:"啞鈴",branch:"分支",stair:"階梯"};
-function paramSummary(P){
-  if(P.fam==="frustum")  return "n"+P.n+" t"+nf(P.top,2)+(Math.abs(P.waist-1)>1e-9?" m"+nf(P.waist,2):"");
-  if(P.fam==="sphere")   return "—";
-  if(P.fam==="ring")     return "n"+P.n+" q"+nf(P.hole,2)+" d"+nf(P.depth,2);
-  if(P.fam==="star")     return "k"+P.sk+" i"+nf(P.rin,2);
-  if(P.fam==="dumbbell") return "n"+P.n+" c"+nf(P.neck,2);
-  if(P.fam==="branch")   return "u"+nf(P.u,2)+" p"+nf(P.p,2);
-  if(P.fam==="stair")    return "s"+P.nstep;
-  return "";
-}
-function renderList(){
-  countEl.textContent=rows.length;
-  if(!rows.length){
-    listBody.innerHTML='<div class="empty">尚未加入任何形體。調好參數後按「加入清單」,可累積成一份參數表並複製為 CSV。</div>';
+  if(!isFinite(met.L) || !isFinite(met.thin) || !isFinite(met.x)){
+    $("strip").innerHTML=cellHtml("狀態","參數超出可計算範圍，請調回合理值","warn");
+    $("flag").className="flag warn on";
+    $("flag").textContent="幾何計算失敗";
     return;
   }
-  var h='<table><thead><tr><th>族</th><th>參數</th><th>x</th><th>y</th><th>z</th><th>薄</th><th>g</th><th></th><th></th></tr></thead><tbody>';
-  for(var i=0;i<rows.length;i++){
-    var r=rows[i];
-    h+='<tr><td>'+r.famLabel+'</td><td>'+r.summary+'</td><td>'+r.x.toFixed(1)+
-       '</td><td>'+r.y.toFixed(1)+'</td><td>'+r.z.toFixed(1)+'</td><td>'+r.thin.toFixed(1)+
-       '</td><td>'+r.mass.toFixed(1)+
-       '</td><td><button class="del" data-d="'+i+'" aria-label="下載 STL">⇩</button></td>'+
-       '<td><button class="del" data-i="'+i+'" aria-label="移除">×</button></td></tr>';
-  }
-  h+='</tbody></table>';
-  listBody.innerHTML=h;
+  var sorted=[met.x,met.y,met.z].slice().sort(function(a,b){return b-a;});
+  var span=sorted[0]/Math.max(1e-9,sorted[2]);
+  var thin=met.thin, bad=thin<S.minfeat-1e-9;
+  $("strip").innerHTML=
+    cellHtml("尺寸 X·Y·Z mm", met.x.toFixed(1)+" · "+met.y.toFixed(1)+" · "+met.z.toFixed(1))+
+    cellHtml("最長 : 最短", span.toFixed(2), span>5.001?"warn":"")+
+    cellHtml("c 截面", cval.toFixed(2))+
+    cellHtml("e 擠出", eval_.toFixed(2))+
+    cellHtml("L 採用 mm", met.L.toFixed(1)+(met.clamped?" ✳":""), met.clamped?"warn":"")+
+    cellHtml("L 可用範圍 mm",
+      (isFinite(met.Lmin)?met.Lmin.toFixed(1):"—")+" – "+met.Lmax.toFixed(1),
+      (met.Lmin>met.Lmax+1e-9)?"warn":"")+
+    cellHtml("最薄特徵 mm", thin.toFixed(2), bad?"warn":"ok")+
+    (cur.fam==="frustum"
+      ? cellHtml("腰 設定 → 採用",
+          Number(S.waist).toFixed(2)+" → "+waistRatio().toFixed(2),
+          (Math.abs(waistRatio()-S.waist)>1e-6)?"warn":"")
+      : "");
+  $("badge").innerHTML="<b>"+cur.name+"</b>　"+cur.fam;
+  var fl=$("flag");
+  if(met.infeasible){ fl.className="flag warn on"; fl.textContent="印不出來：所需最小尺寸已超過容器"; }
+  else if(bad){ fl.className="flag warn on"; fl.textContent="最薄特徵低於 "+S.minfeat+" mm"; }
+  else { fl.className="flag warn"; }
 }
-listBody.addEventListener("click",function(e){
-  var b=e.target.closest(".del"); if(!b) return;
-  if(b.dataset.d!==undefined){
-    var r=rows[parseInt(b.dataset.d,10)];
-    saveSTL(exportGeo(buildFrom(r)), r.name);
-    return;
-  }
-  rows.splice(parseInt(b.dataset.i,10),1); renderList();
-});
-document.getElementById("add").addEventListener("click",function(){
-  var P=snapshot();
-  rows.push({
-    P:P, name:shapeName(P, met.L),
-    famLabel:famLabels[P.fam], summary:paramSummary(P),
-    x:met.x, y:met.y, z:met.z, a:met.a, b:met.b, c:met.c,
-    V:met.V, f:met.f, mass:met.mass, elong:met.elong, flat:met.flat,
-    L:met.L, Lmax:met.Lmax, clamped:met.clamped, thin:met.thin,
-    mat:S.mat, dens:S.dens
-  });
-  renderList();
-});
-function csvText(){
-  var head=["name","family","n","top_ratio","waist_ratio","waist_pos","hole_ratio","bore_depth","star_k","star_rin",
-            "neck_ratio","neck_len","branch_ts","branch_ta","branch_u","branch_p","n_step",
-            "rx","ry","rz","container_mm","L_set_mm","L_used_mm","L_max_mm","clamped",
-            "x_mm","y_mm","z_mm","a_mm","b_mm","c_mm","elong","flat",
-            "volume_mm3","fill_ratio","min_feature_mm","material","density_g_cm3","mass_g"].join(",");
-  var lines=[head];
-  for(var i=0;i<rows.length;i++){
-    var r=rows[i], P=r.P;
-    lines.push([r.name,P.fam,P.n,nf(P.top,3),nf(P.waist,3),nf(P.wpos,3),nf(P.hole,3),nf(P.depth,3),P.sk,nf(P.rin,3),
-      nf(P.neck,3),nf(P.necklen,3),nf(P.ts,3),nf(P.ta,3),nf(P.u,3),nf(P.p,3),P.nstep,
-      nf(P.rx,3),nf(P.ry,3),nf(P.rz,3),nf(P.container,1),
-      nf(P.cube,2),nf(r.L,3),nf(r.Lmax,3),(r.clamped?1:0),
-      nf(r.x,3),nf(r.y,3),nf(r.z,3),nf(r.a,3),nf(r.b,3),nf(r.c,3),nf(r.elong,4),nf(r.flat,4),
-      nf(r.V,2),nf(r.f,5),nf(r.thin,3),r.mat,nf(r.dens,3),nf(r.mass,3)].join(","));
-  }
-  return lines.join("\n");
-}
-document.getElementById("copy").addEventListener("click",function(){
-  var txt=csvText();
-  var btn=this, orig=btn.textContent;
-  function done(ok){ btn.textContent = ok ? "已複製" : "複製失敗"; setTimeout(function(){btn.textContent=orig;},1400); }
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(txt).then(function(){done(true);},function(){done(false);});
-  } else {
-    var ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta); ta.select();
-    try{ document.execCommand("copy"); done(true); }catch(err){ done(false); }
-    document.body.removeChild(ta);
-  }
-});
 
-/* ============ go ============ */
-resize(); update(); renderList(); loop();
+/* ============ shell ============ */
+function renderAll(){
+  renderRail();
+  $("ptitle").textContent = cur.name;
+  $("pfam").textContent   = cur.fam;
+  $("pdesc").textContent  = cur.desc;
+  renderParams(); renderLevels();
+}
+$("tab1").onclick=function(){ tab=1; setTab(); };
+$("tab2").onclick=function(){ tab=2; setTab(); };
+function setTab(){
+  $("tab1").setAttribute("aria-selected", tab===1?"true":"false");
+  $("tab2").setAttribute("aria-selected", tab===2?"true":"false");
+  $("body1").hidden = tab!==1; $("body2").hidden = tab!==2;
+}
+$("viewopt").onclick=function(ev){
+  var b=ev.target.closest("button"); if(!b) return;
+  var k=b.getAttribute("data-k");
+  if(k==="cont"){ showCont=!showCont; b.setAttribute("aria-pressed", showCont?"true":"false"); }
+  else if(k==="spin"){ autoSpin=!autoSpin; reduceMotion=!autoSpin;
+                       b.setAttribute("aria-pressed", autoSpin?"true":"false"); }
+};
+
+function toast(msg){
+  var t=$("toast"); t.textContent=msg; t.className="toast on";
+  setTimeout(function(){ t.className="toast"; },1500);
+}
+function copy(txt,label){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){toast(label);},function(){fb(txt,label);});
+  } else fb(txt,label);
+}
+function fb(txt,label){
+  var ta=document.createElement("textarea");
+  ta.value=txt; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); toast(label); }catch(e){ toast("複製失敗，請手動選取"); }
+  document.body.removeChild(ta);
+}
+
+resize(); setTab(); loadClass(CLASSES[0]); loop();
+
 })();
 </script>
 </body>
